@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import os
-    #todo: 10 fold cross validation
+    #todo: 10 fold cross validation and stratification as well as testing class
 
     # NaiveBayes class initializes with the path of the .data file and creates a data frame then locates classes and features
 
@@ -13,6 +13,7 @@ class NaiveBayes:
         self.features = self.df.columns[self.df.columns != 'class']
 
     # get_classes iterates through classes and appends the proportion of classes to a list
+    # can maybe delete later if not used
 
     def get_classes(self):
         No_C = []
@@ -51,7 +52,6 @@ class NaiveBayes:
 
     def bin(self, bins):
         Nbins = bins # hyperparameter, tunable
-
         for feature in self.features:
             bin_labels = np.arange(1, Nbins + 1)
             dtype = str(self.df[feature].dtype)
