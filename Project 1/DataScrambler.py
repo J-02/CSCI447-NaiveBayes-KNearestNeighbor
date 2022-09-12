@@ -16,7 +16,6 @@ def scramble():
     for file in os.listdir("Data"):
         if file.endswith('.data') and not file.endswith('scrambled.data'):
 
-            print("Shuffling "+file+"...")
             df = pd.read_csv('Data/'+file, index_col=0)
             df.name = file.split(sep='.')[0] +"-scrambled.data"
             features = df.shape[1] - 1 # counts total features excluding class column
@@ -25,7 +24,6 @@ def scramble():
             for r in range(Rfeatures):
                 i = rndm.randint(0,features) # randomly picks column/feature index
                 np.random.shuffle(df[df.columns[i]].values) # shuffles column/feature values
-                print('feature:'+df.columns[i]+" shuffled")
             df.to_csv("Data/"+df.name)
-            print(file+" shuffled to: "+df.name)
+
 

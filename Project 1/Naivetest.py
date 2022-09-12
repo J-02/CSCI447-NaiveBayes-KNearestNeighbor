@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import random as random
 import matplotlib.pyplot as plt
+import DataScrambler as ds
 
 # todo: 10 fold cross validation and stratification
 
@@ -114,7 +115,9 @@ class NaiveBayes:
     # number of bins is only changeable per data set
 
     def bin(self, bins):
+
         Nbins = bins  # hyperparameter, tunable
+
         for feature in self.features:
             bin_labels = np.arange(1, Nbins + 1)
             dtype = self.df[feature].dtype
@@ -124,29 +127,26 @@ class NaiveBayes:
 
                 except ValueError:
                     self.df[feature] = pd.cut(x=self.df[feature], bins=Nbins, labels=bin_labels)
-
             # todo:not working
             # Bin hyperparameter tuning:
             # iterates through bin sizes and returns highest accuracy and bin size
             # only glass and iris need tuning all others are not binned
             # *to run quickly set range(1) and i =>2*
-            #
-def tuning(self,split,x,bins):
-    accuracy = []
-    for x in range(10):
+    def tuning(self,equal,file):
+        accuracy = []
         nBins = []
-
-        p = 10
-        for n in range(1):
-            i = 8
+        for n in range(2,25):
+            i = n
+            self.bin(n,equal)
             current = NaiveBayes('Data/' + file)
-            current.bin(i)
-            nBins.append(i)
-            trainData = current.df.sample(frac=.9, random_state=x)
+            trainData = current.df.sample(frac=.50, random_state=1)
             testData = current.df.drop(trainData.index)
             trainP = current.train(trainData)
             test = current.test(testData, trainP)
-    print("Accuracy:", test)
+            accuracy.append(test)
+            nBins.append(n)
+        plt.scatter(nBins,accuracy)
+        plt.show()
 
 # Goes through files from /Data/ folder to find .data folders
 # once found initializes the file with Naive Bayes class
@@ -154,23 +154,4 @@ def tuning(self,split,x,bins):
 # Creates testing data by dropping testing data from original data
 
 
-for file in os.listdir("Data"):
-    if file.endswith('.data'):
-        print(file)
-        if (file.startswith(('glass', 'iris'))):
-            current = NaiveBayes('Data/' + file)
-            current.bin(8)
-            trainData = current.df.sample(frac=.9, random_state=1)
-            testData = current.df.drop(trainData.index)
-            trainP = current.train(trainData)
-            test = current.test(testData, trainP)
-            print("Accuracy:", test)
 
-        else:
-            current = NaiveBayes('Data/' + file)
-            trainData = current.df.sample(frac=.9, random_state=1)
-            testData = current.df.drop(trainData.index)
-            trainP = current.train(trainData)
-            test = current.test(testData, trainP)
-
-            print("Accuracy:",current.test(testData, trainP))
