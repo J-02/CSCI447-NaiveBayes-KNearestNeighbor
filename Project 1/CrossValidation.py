@@ -3,7 +3,7 @@ import DataScrambler as ds
 import os
 
 # todo: 5x2 Cross Validation, run 2 fold 5 times, run test 5 times find most accurate
-# tests files that end with scrambled vs those that done
+# tests files that end with scrambled vs those that dont
 # file.endswith('scrambled.data')
 
 
