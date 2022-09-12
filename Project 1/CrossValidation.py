@@ -3,6 +3,8 @@ import DataScrambler as ds
 import os
 
 # todo: 5x2 Cross Validation, run 2 fold 5 times, run test 5 times find most accurate
+# tests files that end with scrambled vs those that done
+# file.endswith('scrambled.data')
 
 
 
@@ -12,7 +14,7 @@ import os
 # Creates testing data by dropping testing data from original data
 
 
-def test(file):
+def run(file):
     current = Nt.NaiveBayes('Data/' + file)
     if (file.startswith(('glass', 'iris'))):
         current.bin(8)
@@ -20,9 +22,12 @@ def test(file):
     testData = current.df.drop(trainData.index)
     trainP = current.train(trainData)
     accuracy = current.test(testData, trainP)
+    print(file,':',accuracy)
     return accuracy
+
+
 
 ds.scramble()
 for file in os.listdir("Data"):
     if file.endswith('.data'):
-        test(file)
+        run(file)
