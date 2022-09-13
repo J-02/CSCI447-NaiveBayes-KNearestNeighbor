@@ -1,3 +1,6 @@
+import matplotlib.pyplot as plt
+import numpy as np
+
 import Naivetest as Nt
 import DataScrambler as ds
 import os
@@ -16,18 +19,33 @@ import os
 
 def run(file):
     current = Nt.NaiveBayes('Data/' + file)
-    if (file.startswith(('glass', 'iris'))):
+    if file.startswith('glass'):
         current.bin(8)
+    if file.startswith('iris'):
+        current.bin(6)
     trainData = current.df.groupby('class', group_keys=False).apply(lambda x: x.sample(frac=.5))
     testData = current.df.drop(trainData.index)
     trainP = current.train(trainData)
     accuracy = current.test(testData, trainP)
-    print(file,':',accuracy)
+    print(file,': ')
+    print('Loss:',accuracy[0], 'Precision:',accuracy[1])
     return accuracy
 
 
 
 ds.scramble()
+scrambled = []
+control = []
+files = []
 for file in os.listdir("Data"):
     if file.endswith('.data'):
-        run(file)
+        lp = run(file)
+        if file.endswith('scrambled.data'):
+            scrambled.append(lp[1])
+        else:
+            files.append(file[0:-5])
+            control.append(lp[1])
+c = np.subtract(control,scrambled)
+plt.plot(files,c)
+plt.show()
+

@@ -1,11 +1,6 @@
 import numpy as np
 import pandas as pd
-import os
-import random as random
 import matplotlib.pyplot as plt
-import DataScrambler as ds
-
-# todo: 10 fold cross validation and stratification
 
 class NaiveBayes:
 
@@ -27,6 +22,12 @@ class NaiveBayes:
         count = data['class'].value_counts()[c]  # total occurrences of class
         total = len(data)
         return count / total
+
+    # 0-1 Loss function, returns 1 if prediction is incorrect returns 0 if true
+    def loss(self, row, Class):
+        if (row['class'] == Class):
+            return 0
+        return 1
 
     # Given a feature (A_j) and value for that feature (a_k) and a class (c_i) calculate probability it is that class
     # Selects a_k in column / feature A_j then selects from those the ones that match the class given: c_j
@@ -68,7 +69,7 @@ class NaiveBayes:
         return [train, classP]
 
     # Test starts with a row and calculates the probability of each class given the probabilities in the trainData
-    # For each class it goes though feature and multiplies the probabilities
+    # For each class it goes through feature and multiplies the probabilities
     # Once a total probability is found for a class, it compares that to the LargestProb
     # if a larger probability is found it becomes the new LargestProb and its class becomes the predicted class
     # Once all classes are gone through, it checks if its prediction is correct and adds it to the accuracy calculation
@@ -76,8 +77,11 @@ class NaiveBayes:
     # Calculates C(x) and class(x)
 
     def test(self, testData, trainData):  # x is data frame of probabilities
-        correct = 0  # hypothesis = class
-        count = 0
+        # hypothesis = class
+        actual = []
+        predicted = []
+        l = 0
+        count = len(testData)
         x = trainData[0]
         classP = trainData[1]
 
@@ -95,20 +99,20 @@ class NaiveBayes:
                     Fprob = 1
                     Id = str(feature) + "," + str(row[feature]) + ',' + str(c)
 
-                    if (x.index.str.contains(Id).any()):
-                        Fprob *= x.loc[Id, 'Y']
+                    if x.index.__contains__(Id):
+                        Fprob = x.loc[Id, 'Y']
 
                     Tprob *= Fprob
                 if (Tprob > LargestProb):
                     LargestProb = Tprob
                     Class = c
+            actual.append(row['class'])
+            predicted.append((Class))
+            l += self.loss(row, Class)
 
-            if (row['class'] == Class):
-                correct += 1
-            count += 1
-
-        accuracy = correct / count
-        return accuracy
+        confusionMatrix = self.confusionMatrix(actual, predicted)
+        p = self.Pmacro(confusionMatrix)
+        return l, p
 
     # Binning puts float64 data into bins/categories using pandas qcut and cut
     # when data has lots of 0s it is split using cut as qcut cannot separate into equal bins without overlapping edges
@@ -127,11 +131,12 @@ class NaiveBayes:
 
                 except ValueError:
                     self.df[feature] = pd.cut(x=self.df[feature], bins=Nbins, labels=bin_labels)
-            # todo:not working
-            # Bin hyperparameter tuning:
-            # iterates through bin sizes and returns highest accuracy and bin size
-            # only glass and iris need tuning all others are not binned
-            # *to run quickly set range(1) and i =>2*
+
+# todo:not working
+# Bin hyperparameter tuning:
+# iterates through bin sizes and returns highest accuracy and bin size
+# only glass and iris need tuning all others are not binned
+# *to run quickly set range(1) and i =>2*
     def tuning(self,equal,file):
         accuracy = []
         nBins = []
@@ -148,10 +153,33 @@ class NaiveBayes:
         plt.scatter(nBins,accuracy)
         plt.show()
 
-# Goes through files from /Data/ folder to find .data folders
-# once found initializes the file with Naive Bayes class
-# Creates training data using dataframe sample
-# Creates testing data by dropping testing data from original data
+# Creates confusion matrix that is used for finding precision loss function
+    def confusionMatrix(self,Y,Y_h):
+        actual = pd.Series(Y, name='Actual')
+        predicted = pd.Series(Y_h, name='Predicted')
+        m = pd.crosstab(actual, predicted)
+        for x in self.classes:
+            if m.columns.__contains__(int(x)):
+                pass
+            else:
+                m.insert(loc=0,column=x, value=0)
+        return m
+
+# Find Macro-Averaging precision by adding up precision for each class
+    def Pmacro(self, m):
+        precision = 0
+        for x in self.classes:
+            Tp = m.loc[x,x]
+            Fp = m[x].sum()-Tp
+            if (Tp+Fp) == 0:
+                pass
+            else:
+                p = (Tp/(Tp+Fp))
+                precision += p
+        pmacro = precision / len(self.classes)
+        return pmacro
+
+
 
 
 
