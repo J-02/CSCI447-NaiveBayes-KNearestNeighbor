@@ -13,12 +13,12 @@ for file in os.listdir("Data/unbinned/"):
     p = []
     bins = []
 
-    for l in tqdm(range(15), desc= file+" tuning..."):
+    for l in tqdm(range(20), desc= file+" tuning..."):
         current = Nt.NaiveBayes("Data/unbinned/"+file)
         b = 1+l
         current.bin(b)
         avg = []
-        for i in range(10):
+        for i in range(100):
             trainData = current.df.groupby('class', group_keys=False).apply(lambda x: x.sample(frac=.5))
             testData = current.df.drop(trainData.index)
             trainP = current.train(trainData)
