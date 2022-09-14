@@ -23,7 +23,7 @@ def run(file):
     trainP = current.train(trainData)
     accuracy = current.test(testData, trainP)
     #print(file,': ')
-    #print('Loss:',accuracy[0], 'Precision:',accuracy[1])
+    #print('Recall:',accuracy[0], 'Precision:',accuracy[1])
     return accuracy
 
 # Goes through files from /Data/ folder to find .data folders
@@ -35,12 +35,12 @@ def main():
     files = []
     for file in tqdm(os.listdir("Data"), desc="Loading..."):
         if file.endswith('.data'):
-            lp = crossValidation(file)
+            avgPrecision = crossValidation(file)
             if file.endswith('scrambled.data'):
-                scrambled.append(lp)
+                scrambled.append(avgPrecision)
             else:
                 files.append(file[0:-5])
-                control.append(lp)
+                control.append(avgPrecision)
     difference = np.subtract(control,scrambled)
     data = list(zip(control,scrambled,difference))
     results = pd.DataFrame(data,index=files, columns=['control','scrambled','difference'])

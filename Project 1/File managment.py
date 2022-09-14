@@ -19,8 +19,8 @@ for file in os.listdir("Data/unbinned/"):
     current = nt.NaiveBayes('Data/unbinned/'+file)
     print(current.df)
     if file.__contains__('glass'):
-        current.bin(7)
+        current.bin(20)
     if file.__contains__('iris'):
-        current.bin(11)
+        current.bin(6)
     print(current.df)
     current.df.to_csv("Data/"+file)
