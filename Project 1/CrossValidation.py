@@ -46,6 +46,7 @@ def main():
     results = pd.DataFrame(data,index=files, columns=['control','scrambled','difference'])
     results.to_csv('Results/Results.data')
     plot(difference, files)
+    return [control,scrambled,files]
 
 # plots results in 2 line charts
 def plot(difference, files):
