@@ -11,24 +11,30 @@ from tqdm import tqdm
 
 for file in os.listdir("Data/unbinned/"):
     p = []
+    r = []
     bins = []
 
-    for l in tqdm(range(50), desc= file+" tuning..."):
+    for l in tqdm(range(31), desc= file+" tuning..."):
         current = Nt.NaiveBayes("Data/unbinned/"+file)
         b = l*2
         current.bin(b)
-        avg = []
-        for i in range(20):
+        avgP = []
+        avgR = []
+        for i in range(25):
             trainData = current.df.groupby('class', group_keys=False).apply(lambda x: x.sample(frac=.5))
             testData = current.df.drop(trainData.index)
             trainP = current.train(trainData)
-            avg.append(current.test(testData, trainP)[1])
+            avgR.append(current.test(testData, trainP)[0])
+            avgP.append(current.test(testData, trainP)[1])
 
         bins.append(b)
-        p.append(np.average(avg))
+        p.append(np.average(avgP))
+        r.append((np.average(avgR)))
 
-    plt.scatter(bins,p, label=file[0:-5])
+    plt.plot(bins,p, label=file[0:-5]+" Precision")
     plt.legend()
+    #plt.scatter(bins, r, label=file[0:-5]+" Recall")
+    #plt.legend()
 
 
 plt.savefig('Results/tuning'+'.png')

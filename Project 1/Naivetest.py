@@ -118,7 +118,7 @@ class NaiveBayes:
         confusionMatrix = self.confusionMatrix(actual, predicted)
         p = self.Pmacro(confusionMatrix)
         r = self.Rmacro(confusionMatrix)
-        return r, p
+        return [r, p]
 
 
     # Data discretization:
@@ -137,9 +137,13 @@ class NaiveBayes:
             dtype = self.df[feature].dtype
             if dtype == "float64":
                 try:
-                    self.df[feature] = pd.qcut(self.df[feature], q=Nbins, labels=bin_labels, duplicates='drop')
+                    #print('qcut')
+                    #print(pd.qcut(self.df[feature], q=Nbins).value_counts())
+                    self.df[feature] = pd.qcut(self.df[feature], q=Nbins, labels=bin_labels)
 
                 except ValueError:
+                    #print('cut')
+                    #print(pd.cut(self.df[feature], bins=Nbins).value_counts())
                     self.df[feature] = pd.cut(x=self.df[feature], bins=Nbins, labels=bin_labels)
 
     # Loss functions:
@@ -155,6 +159,7 @@ class NaiveBayes:
                 pass
             else:
                 m.insert(loc=0, column=x, value=0)
+        m.to_csv('Results/ConfusionMatrix.data')
         return m
 
     # Find Macro-Averaging recall by adding up recall calculation for each class
