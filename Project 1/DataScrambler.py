@@ -26,4 +26,10 @@ def scramble():
                 np.random.shuffle(df[df.columns[i]].values) # shuffles column/feature values
             df.to_csv("Data/"+df.name)
 
-
+def shuffle(df):
+    features = df.shape[1] - 1 # counts total features excluding class column
+    Rfeatures = -(-features // 10) # divides features by 10 and rounds up to the nearest whole number
+    for r in range(Rfeatures):
+        i = rndm.randint(0,features) # randomly picks column/feature index
+        np.random.shuffle(df[df.columns[i]].values) # shuffles column/feature values
+    return df
