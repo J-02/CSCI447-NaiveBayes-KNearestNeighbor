@@ -35,7 +35,7 @@ class NaiveBayes:
 
                 for value in values:
                     ID = str(feature) + ", " + str(value) + ', ' + str(c)
-                    probability, count = self.MAP(trainData, feature, value, c)
+                    probability, count = self.Parameterization(trainData, feature, value, c)
                     probabilities.append([ID, probability])
                     counts.append([ID, count])
             classCount, total = self.class_proportion(trainData, c)
@@ -73,12 +73,12 @@ class NaiveBayes:
         total = len(data)
         return count, total
 
-    # MAP
+    # Parameterization
     # Given a feature (A_j) and value for that feature (a_k) and a class (c_i) calculates the probability it is c_i
     # Selects a_k from A_j (column / feature) then selects from those the ones that match the class given: c_j
     # Calculates F(A_j = a_k, C = c_i)
 
-    def MAP(self, trainData, A_j, a_k, c_i):
+    def Parameterization(self, trainData, A_j, a_k, c_i):
         x = trainData.loc[trainData[A_j] == a_k]  # Finds rows with the given feature value
         y = x.loc[trainData['class'] == c_i]  # Finds rows matching class that have the given feature and value
         z = trainData[trainData['class'] == c_i]  # Finds only rows containing the given class
