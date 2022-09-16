@@ -114,8 +114,8 @@ def allFiles():
     results = pd.DataFrame(data=np.transpose(data),
                            columns=['Control Precision', 'Shuffled Precision', 'Control Recall', 'Shuffled Recall'],
                            index=Datasets)
-    # print(results.to_latex())
-    #results.to_csv('Results/Results.data')
+    print(results.to_latex())
+    results.to_csv('Results/Results.data')
     data = [controlP, controlR, shuffledP, shuffledR]
     results = pd.DataFrame(data=np.transpose(data), columns=['Control Precision', 'Control Recall', 'Shuffled Precision', 'Shuffled Recall'], index=Datasets)
 
@@ -124,7 +124,7 @@ def allFiles():
     plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2, mode="expand", borderaxespad=0.)
     plt.xticks(rotation=0)
     plt.autoscale()
-    #plt.savefig('Results/Results.png')
+    plt.savefig('Results/Results.png')
     plt.show()
 
 # ----------------------------------------------------------------------------------------------------
@@ -187,5 +187,6 @@ def Video():
     Rshuffled = Recall
 
     print(file, ":", 'Control Precision:', Pcontrol, 'Shuffled Precision:', Pshuffled, 'Control Recall:', Rcontrol, 'Shuffled Recall:', Rshuffled)
+
 allFiles()
 #Video()
