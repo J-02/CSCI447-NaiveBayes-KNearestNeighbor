@@ -3,10 +3,13 @@ import numpy as np
 import random as rndm
 import os
 
-# Counts total features per dataset then divides features by 10 and rounds to the
+#----------------------------------------------------------------------------------
+# shuffle(df)
+# Introduces noise to the data
+# Counts total features per dataset excluding class then divides the total features by 10 and rounds to the
 # nearest whole number to ensure at least 10% of features are shuffled.
 # Then selects a random column and shuffles all values in that column.
-# This occurs for at least 10% of the columns/features.
+# This occurs until at least 10% of the columns/features are shuffled.
 
 
 def shuffle(df):

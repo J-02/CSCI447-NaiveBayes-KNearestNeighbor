@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
 
 class NaiveBayes:
@@ -19,7 +18,7 @@ class NaiveBayes:
     # -------------------------------------------------------------
     # train
     # Iterates through starting with classes then features and feature values to find probabilities
-    # Puts probabilities in a dataframe mapped to a unique ID which is the Feature/Value/Class
+    # Puts probabilities in a dataframe mapped the Feature/Value/Class
     # Also creates another dataframe with a proportion mapped to each unique class in the training set
     # Both dataframes are returned in a list
 
@@ -40,8 +39,8 @@ class NaiveBayes:
                     probabilities.append([ID, probability])
                     counts.append([ID, count])
             classCount, total = self.class_proportion(trainData, c)
-            classProportions.append([c,classCount / total])
-            classCounts.append([c,classCount])
+            classProportions.append([c, classCount / total])
+            classCounts.append([c, classCount])
         train = pd.DataFrame(probabilities, columns=['Attribute, Value, Class', 'Probability'])
         count = pd.DataFrame(counts, columns=['Attribute, Value, Class', 'Occurrences'])
         classP = pd.DataFrame(classProportions, columns=['Class', 'Proportion'])
@@ -50,6 +49,9 @@ class NaiveBayes:
         count = count.set_index('Attribute, Value, Class')
         classP = classP.set_index('Class')
         classC = classC.set_index('Class')
+
+        # This is for the video
+
         if Print:
             print("This is a trained model")
             print(train)
@@ -62,7 +64,6 @@ class NaiveBayes:
 
         return [train, classP]
 
-
     # class_proportion counts total occurrences of a class
     # then calculates a proportion given a data set
     # Calculates Q(C = ci)
@@ -73,9 +74,9 @@ class NaiveBayes:
         return count, total
 
     # MAP
-    # Given a feature (A_j) and value for that feature (a_k) and a class (c_i) calculate probability it is that class
-    # Selects a_k in column / feature A_j then selects from those the ones that match the class given: c_j
-    # Calculates F(Aj = ak, C = ci)
+    # Given a feature (A_j) and value for that feature (a_k) and a class (c_i) calculates the probability it is c_i
+    # Selects a_k from A_j (column / feature) then selects from those the ones that match the class given: c_j
+    # Calculates F(A_j = a_k, C = c_i)
 
     def MAP(self, trainData, A_j, a_k, c_i):
         x = trainData.loc[trainData[A_j] == a_k]  # Finds rows with the given feature value
@@ -87,13 +88,11 @@ class NaiveBayes:
         count = c_iANDa_k
         return probability, count
 
-
-
     # Testing data
     # ---------------------------------------
-
+    # test
     # Test starts with a row and calculates the probability of each class given the probabilities in the trainData
-    # For each class it goes through feature and multiplies the probabilities
+    # For each class it goes through features of the row and multiplies the probabilities
     # Once a total probability is found for a class, it compares that to the LargestProb
     # if a larger probability is found it becomes the new LargestProb and its class becomes the predicted class
     # Once all classes are gone through, it checks if its prediction is correct and adds it to the accuracy calculation
@@ -101,13 +100,11 @@ class NaiveBayes:
     # Calculates C(x) and class(x)
 
     def test(self, testData, trainData, Print=False):
-        # hypothesis = class
+
         testData.reset_index()
         actual = []
         predicted = []
-        l = 0
         x = 0
-        count = len(testData)
         trainP = trainData[0]  # data frame of probabilities given attribute, attribute value, and class
         classP = trainData[1]  # data frame of class probabilities
         for index, row in testData.iterrows():
@@ -125,23 +122,22 @@ class NaiveBayes:
                     Id = str(feature) + ", " + str(row[feature]) + ', ' + str(c)
 
                     if trainP.index.__contains__(Id):
-                        Fprob = trainP.loc[Id, 'Probability']
+                        Fprob = trainP.loc[Id, 'Probability']  # probability from parameterizing the training data
 
                     Tprob *= Fprob
 
-                if (Tprob > LargestProb):
+                if Tprob > LargestProb:
                     LargestProb = Tprob
                     Class = c
             actual.append(row['class'])
-            predicted.append((Class))
-            l += self.loss(row, Class)
+            predicted.append(Class)
 
             if Print:
                 if row['class'] != Class:
                     y = 'Incorrect'
                 else:
                     y = 'Correct'
-                print(y,testData.iloc[[x],0:4], "Predicted Class:", Class, "Actual:", row['class'])
+                print(y, testData.iloc[[x], 0:4], "Predicted Class:", Class, "Actual:", row['class'])
             x += 1
 
         confusionMatrix = self.confusionMatrix(actual, predicted)
@@ -150,11 +146,9 @@ class NaiveBayes:
         testData.insert(0, "Predicted Class", predicted)
         return [r, p]
 
-
-
     # Data discretization:
     # -----------------------------------------------------------------------------------
-
+    # bin
     # bin puts float64 data into bins/categories using pandas qcut and cut
     # when data has lots of 0s it is split using cut as qcut cannot separate into equal bins without overlapping edges
     # number of bins is only changeable per data set
@@ -169,20 +163,21 @@ class NaiveBayes:
             if dtype == "float64":
                 try:
                     if Print:
-                        print('qcut')
+
                         print(pd.qcut(self.df[feature], q=Nbins).value_counts())
+                        print('qcut')
                     self.df[feature] = pd.qcut(self.df[feature], q=Nbins, labels=bin_labels)
 
                 except ValueError:
                     if Print:
-                        print('cut')
                         print(pd.cut(self.df[feature], bins=Nbins).value_counts())
+                        print('cut')
                     self.df[feature] = pd.cut(x=self.df[feature], bins=Nbins, labels=bin_labels)
 
     # Loss functions:
     # ---------------------------------------------------------------------
-
-    # Creates confusion matrix that is used for finding precision loss function
+    # confusionMatrix
+    # Creates confusion matrix that is used for finding loss functions
     def confusionMatrix(self, Y, Y_h):
         actual = pd.Series(Y, name='Actual')
         predicted = pd.Series(Y_h, name='Predicted')
@@ -223,11 +218,8 @@ class NaiveBayes:
         pmacro = precision / len(self.classes)
         return pmacro
 
-    # 0-1 Loss function, returns 1 if prediction is incorrect returns 0 if true
+    # 0-1 Loss function, returns 1 if prediction is incorrect returns 0 if true, not used
     def loss(self, row, Class):
-        if (row['class'] == Class):
+        if row['class'] == Class:
             return 0
         return 1
-
-    # --------------------------------------------------------------------------------
-
