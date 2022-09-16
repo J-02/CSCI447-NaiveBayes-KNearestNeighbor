@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import Naivetest as Nt
-import DataScrambler as ds
+import DataShuffler as ds
 import os
 from IPython.display import display
 from tqdm import tqdm
@@ -17,11 +17,13 @@ def run(file):
     fold1 = current.df.groupby('class', group_keys=False).apply(lambda x: x.sample(frac=.5))
     fold2 = current.df.drop(fold1.index)
     trainP = current.train(fold1)
-    p.append(current.test(fold2, trainP))
-    r.append(current.test(fold2, trainP))
+    results = current.test(fold2, trainP)
+    p.append(results[1])
+    r.append(results[0])
     trainP = current.train(fold2)
-    p.append(current.test(fold1, trainP))
-    r.append(current.test(fold1, trainP))
+    results = current.test(fold1, trainP)
+    p.append(results[1])
+    r.append(results[0])
     return np.average(r),np.average(p)
 
 # Does same thing as run just with shuffling 10% of the features
@@ -32,11 +34,13 @@ def runS(file):
     fold1 = current.df.groupby('class', group_keys=False).apply(lambda x: x.sample(frac=.5))
     fold2 = current.df.drop(fold1.index)
     trainP = current.train(ds.shuffle(fold1))
-    p.append(current.test(fold2, trainP))
-    r.append(current.test(fold2, trainP))
+    results = current.test(fold2, trainP)
+    p.append(results[1])
+    r.append(results[0])
     trainP = current.train(ds.shuffle(fold2))
-    p.append(current.test(fold1, trainP))
-    r.append(current.test(fold1, trainP))
+    results = current.test(fold1, trainP)
+    p.append(results[1])
+    r.append(results[0])
     return np.average(r), np.average(p)
 
 
@@ -46,9 +50,9 @@ def runS(file):
 def CV(file):
     Pcontrol = []
     Rcontrol = []
-    Pscrambled = []
-    Rscrambled = []
-    for i in range(2):  # first iteration non scrambled, second iteration scrambled.
+    Pshuffled = []
+    Rshuffled = []
+    for i in range(2):  # first iteration non shuffled, second iteration shuffled.
         for x in range(5):
             if i != 1:
                 Recall, Precision = run(file)
@@ -58,33 +62,108 @@ def CV(file):
 
             else:
                 Recall, Precision = runS(file)
-                Pscrambled.append(Precision)
-                Rscrambled.append(Recall)
+                Pshuffled.append(Precision)
+                Rshuffled.append(Recall)
 
-    scrambledP = pd.Series(Pscrambled, name='Scrambled Precision')
-    controlP = pd.Series(Pcontrol, name='Control Precision')
-    scrambledR = pd.Series(Rscrambled, name='Scrambled Recall')
-    controlR = pd.Series(Rcontrol, name='Control Recall')
-    data = [controlP, scrambledP, controlR, scrambledR]
-    results = pd.DataFrame(data).transpose()
-    print(name)
-    print(results.to_string())
+    data = [np.average(Pcontrol), np.average(Pshuffled), np.average(Rcontrol), np.average(Rshuffled)]
+    return data
+
 def allFiles():
     Pcontrol = []
     Rcontrol = []
-    Pscrambled = []
-    Rscrambled = []
+    Pshuffled = []
+    Rshuffled = []
     files = []
-    a = False
-    b = False
     for file in os.listdir("Data"):
         if file.endswith('.data'):
-            CV(file)
+            data = CV(file)
+            Pcontrol.append(data[0])
+            Pshuffled.append(data[1])
+            Rcontrol.append(data[2])
+            Rshuffled.append(data[3])
+            files.append(file[0:-5])
 
+    shuffledP = pd.Series(Pshuffled, name='shuffled Precision')
+    controlP = pd.Series(Pcontrol, name='Control Precision')
+    shuffledR = pd.Series(Rshuffled, name='shuffled Recall')
+    controlR = pd.Series(Rcontrol, name='Control Recall')
+    Datasets = pd.Series(files, name='Dataset')
+    data = [controlP, shuffledP, controlR, shuffledR]
+    results = pd.DataFrame(data=np.transpose(data),
+                           columns=['Control Precision', 'Shuffled Precision', 'Control Recall', 'Shuffled Recall'],
+                           index=Datasets)
+    #print(results.to_latex())
+    results.to_csv('Results/Results.data')
+    data = [controlP, controlR, shuffledP, shuffledR]
+    results = pd.DataFrame(data=np.transpose(data),columns=['Control Precision','Control Recall','Shuffled Precision','Shuffled Recall'], index=Datasets)
+    results.to_csv('Results/Results.data')
 
-
-
-allFiles()
+    # Bar chart plotting
+    results.plot.bar()
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+           ncol=2, mode="expand", borderaxespad=0.)
+    plt.xticks(rotation=0)
+    plt.autoscale()
+    plt.savefig('Results/Results.png')
+    plt.show()
 
 def Video():
-    pass
+
+    # Demonstration of Data discretization
+    # Two methods are used, qcut and cut
+    # Qcut puts an equal amount of data in each bin
+    # cut puts data in equal sized bins, useful when lots of 0s or repeat values in data
+    current = Nt.NaiveBayes('Data/unbinned/glass.data')
+    current.bin(4, Print=True)
+
+
+    # This portion of the code demonstrates a sample trained model.
+    # Demonstrates the counting process for class conditional attributes.
+    # Demonstrates counting process for a class
+    input("Press Enter to continue...")
+    current = Nt.NaiveBayes('Data/house-votes-84.data')
+    fold1 = current.df.groupby('class', group_keys=False).apply(lambda x: x.sample(frac=.5))
+    fold2 = current.df.drop(fold1.index)
+    trainP = current.train(fold1, True)
+    results = current.test(fold2, trainP)
+
+
+    # This portion shows the sample outputs from non-shuffled compared to shuffled
+    # Non-Shuffled Data
+    input("Press Enter to continue...")
+    current = Nt.NaiveBayes('Data/iris.data')
+    fold1 = current.df.groupby('class', group_keys=False).apply(lambda x: x.sample(frac=.5))
+    fold2 = current.df.drop(fold1.index)
+    trainP = current.train(fold1, False)
+    results = current.test(fold2, trainP, Print=True)
+
+
+    # Shuffled data set
+    input("Press Enter to continue...")
+    fold1 = current.df.groupby('class', group_keys=False).apply(lambda x: x.sample(frac=.5))
+    fold2 = current.df.drop(fold1.index)
+    trainP = current.train(fold1, False)
+    results = current.test(fold2, trainP, Print=True)
+
+    # Performance based on precision and recall
+    input("Press Enter to continue...")
+    file = 'iris.data'
+    Recall, Precision = run(file)
+    Pcontrol = Precision
+    Rcontrol = Recall
+    Recall, Precision = runS(file)
+    Pshuffled = Precision
+    Rshuffled = Recall
+
+    print(file,":",'Control Precision:', Pcontrol,'Shuffled Precision:',Pshuffled,'Control Recall:',Rcontrol,'Shuffled Recall:',Rshuffled)
+
+
+Video()
+
+
+
+
+
+#allFiles()
+
+
