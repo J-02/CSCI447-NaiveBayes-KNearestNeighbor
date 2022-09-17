@@ -143,7 +143,7 @@ class NaiveBayes:
         confusionMatrix = self.confusionMatrix(actual, predicted)
         p = self.Pmacro(confusionMatrix)
         r = self.Rmacro(confusionMatrix)
-        testData.insert(0, "Predicted Class", predicted)
+        if Print: testData.insert(0, "Predicted Class", predicted)
         return [r, p]
 
     # Data discretization:

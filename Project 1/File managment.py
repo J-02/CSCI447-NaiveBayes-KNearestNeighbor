@@ -19,3 +19,4 @@ def bin():
             current.bin(6) #change this number to alter iris.data bin size
         #print(current.df)
         current.df.to_csv("Data/"+file)
+
