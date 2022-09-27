@@ -18,3 +18,4 @@ def getSamples(dataset):
         samples.append(sample)
     return samples
 
+getSamples('abalone.data')
