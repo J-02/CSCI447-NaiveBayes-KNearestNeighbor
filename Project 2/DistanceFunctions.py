@@ -55,18 +55,23 @@ def FDM(data,p=2):
 #-----------------------------------------------------------
 
 
+def kindaNN():
+    data = cv.getSamples('breast-cancer-wisconsin.data')
+    train = pd.DataFrame()
 
-data = cv.getSamples('soybean-small.data')
-train = pd.DataFrame()
-for i in range(len(data)-1):
-    if train.size == 0:
-        train = data[i]
-    else:
-        train = pd.merge(train,data[i])
+    for i in range(len(data)):
 
-    samples = data[i+1].sample(n=2)
-    x = samples.iloc[[0]]
-    y = samples.drop(x.index)
-    #print(x)
-    #print(y)
-    print(VDM(train,x,y))
+        if train.size == 0:
+            train = data[i]
+        else:
+            train = train.append(data[i])
+
+        samples = data[-1].sample(n=2)
+        x = samples.iloc[[0]]
+        y = samples.drop(x.index)
+
+        print(x)
+        print(y)
+
+        print("Distance:",VDM(train,x,y))
+kindaNN()
