@@ -6,7 +6,14 @@ import CrossValidation as cv
 # Edited Nearest Neighbor
 # -----------------------
 # Classifies points in data set until the performance stops improving
-def EK_NN(data, k, e):
-    samples = cv.getSamples(data)
+class NearestNeightbor:
+
+    def __init__(self, data):
+        self.samples = cv.getSamples(data)
+
+    def EKNN(k,n):
+        pass
+
+
 
 
