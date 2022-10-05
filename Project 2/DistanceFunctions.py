@@ -13,8 +13,13 @@ def VDM(data, X, Y, p=2):
         matrix = FDMs[i]
         matrix.columns = matrix.columns.astype(str)
         matrix.index = matrix.index.astype(str)
+
         x = str(X.iloc[0][i])
+
+
+
         y = str(Y.iloc[0][i])
+
         #print(matrix)
         if x in matrix.columns and y in matrix.columns:
             dist = matrix.loc[x,y]
@@ -51,8 +56,14 @@ def FDM(data,p=2):
                     matrix = np.add(pvalues,matrix)
             FDMs.append(matrix)
     return FDMs
-
 #-----------------------------------------------------------
+
+def EuclideanD(x,y):
+    distance = 0
+    for i in range(x.shape[1]-1):
+        distance += abs(x.iloc[0,i]-y.iloc[0,i])
+    distance = distance**(1/2)
+    return distance
 
 
 def kindaNN():
@@ -74,4 +85,3 @@ def kindaNN():
         print(y)
 
         print("Distance:",VDM(train,x,y))
-kindaNN()

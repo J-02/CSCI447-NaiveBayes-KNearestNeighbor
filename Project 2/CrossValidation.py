@@ -8,7 +8,7 @@ import os
 # input is a .data file in the /Data/ folder
 # returns 10 stratified dataframes
 def getSamples(dataset):
-    df = pd.read_csv("Data/"+dataset,index_col=0)
+    df = pd.read_csv("Data/"+dataset,index_col=0, header=0)
 
     samples = []
 
@@ -34,7 +34,5 @@ def getSamples(dataset):
         return samples
 
 def CrossValidation():
+    pass
 
-
-
-print(getSamples('abalone.data'))
