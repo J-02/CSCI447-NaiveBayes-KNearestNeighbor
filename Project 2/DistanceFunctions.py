@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import CrossValidation as cv
 import time
+from numba import njit
 
 # Value difference metric
 #---------------------------------------------------------------------
@@ -60,6 +61,7 @@ def FDM(data,p=2):
 #-----------------------------------------------------------
 
 # new vdm:
+
 def initialize(data):
 
     probabilities = {}

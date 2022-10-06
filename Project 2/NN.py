@@ -2,13 +2,13 @@ import pandas as pd
 import time
 import CrossValidation as cv
 import DistanceFunctions as dist
-from tqdm import tqdm
+from tqdm.auto import tqdm, trange
 
 
 # Nearest Neighbor
 # -----------------------
-# Will add all nearest neighbor algorithms here
-# todo: k-means, regression
+# add all nearest neighbor algorithms here
+# todo: k-means, regression, epsilon
 class NearestNeighbor:
 
     # initializes training data and determines the types of data and the type of output
@@ -20,7 +20,7 @@ class NearestNeighbor:
             self.type = 'discrete'  # uses VDM distance function
         else:
             self.type = 'other'  # uses Euclidean distance function
-        self.samples = cv.getSamples(data)  # creates 10 stratified samples from the dataset in a list [sample1,...,
+        self.samples, self.tune = cv.getSamples(data)  # creates 10 stratified samples from the dataset in a list [sample1,...,
         # sample10]
         self.k = 5  # how many nearest neighbors to use
         self.train = pd.read_csv("Data/" + data, index_col=0, header=0).iloc[
@@ -30,6 +30,7 @@ class NearestNeighbor:
         else:
             self.classification = False # regression
             self.eps = 10  # todo epsilon needs tuned
+
 
     # getDistance:
     # ------------------------------------------
@@ -46,6 +47,9 @@ class NearestNeighbor:
             p = {}
         if not isinstance(x, pd.DataFrame):
             X = pd.DataFrame(self.data.loc[x]).transpose()
+        else:
+            X = x
+            x = X.index
         if not isinstance(y, pd.DataFrame):
             Y = pd.DataFrame(self.data.loc[y]).transpose()
 
@@ -98,14 +102,19 @@ class NearestNeighbor:
     # ------------------------
     # performs k-nearest neighbor using all but one of the samples as training data and last to test
 
-    def KNN(self):
-        self.train = pd.concat((self.samples[0:9]))  # combines all but one sample
-        test = self.samples[9]  # last sample is test data
+    def KNN(self, tune=False):
+        if tune:
+            test = self.tune
+            self.train = pd.concat((self.samples))  # combines all but one sample
+        else:
+            test = self.samples[9]
+            self.train = pd.concat((self.samples[0:9]))# last sample is test data
         len = test.shape[0]
-        if self.type == 'discrete':  # if data is discrete initializes probabilities from training data for vdm distance
+        performance = []  # initializes list of outcomes to measure performance
+        if self.classification:  # if data is discrete initializes probabilities from training data for vdm distance
             p = dist.initialize(self.train)
-            performance = []  # initializes list of outcomes to measure performance
-            for key in tqdm(test.to_dict('index').keys()):  # iterates through each index in the training data
+
+            for key in test.to_dict('index').keys():  # iterates through each index in the training data
                 px = self.predict(key, p)  # gets prediction for index / vector
                 actual = test.loc[key,]["class"]  # sets actual class for index / vector
                 outcome = self.correct(px, actual)  # checks if prediction == class, returns boolean
@@ -114,7 +123,6 @@ class NearestNeighbor:
                 performance.append(outcome)  # adds outcome to performance list
                 #len -= 1
         else:
-            performance = []  # initializes list of outcomes to measure performance
             for key in test.to_dict('index').keys():  # iterates through each index in the training data
                 px = self.predict(key)
                 actual = test.loc[key,].iat[-1]  # sets actual value for index / vector
@@ -123,39 +131,44 @@ class NearestNeighbor:
                 # print('remaining:',len)
                 performance.append(outcome)  # adds outcome to performance list
                 # len -= 1
-        print(performance.count(True), "/", test.shape[0]) # prints performance
-        return performance.count(True) # returns number of correct predictions
+        #print(performance.count(True), "/", test.shape[0]) # prints performance
+        return performance.count(True) / test.shape[0] # returns number of correct predictions
 
     # EKNN - edited k-nearest neighbor (WIP)
     #---------------------------------
-    # Removes incorrectly classified points until performance degrades todo: add terminal conditions
+    # Removes incorrectly classified points until performance degrades
 
     def EKNN(self):
         self.train = pd.concat((self.samples[0:9]))
         len = self.train.shape[0]
         performance = 0
-        tested = []
-        while True:
+        count = 0
+        for key in self.train.to_dict('index').keys():
 
-            x = self.train.sample(n=1)
-            if x.index not in tested:
-                tested.append(x.index)
-                self.train.drop(x.index)
+            x = pd.DataFrame(self.train.loc[key]).transpose()
+            self.train = self.train.drop(key)
+
+            if self.type == 'discrete':
+                p = dist.initialize(self.train)
+                px = self.predict(x, p)
+                actual = x.loc[key,].iat[-1]
+                if self.correct(px, actual):
+                    self.train= pd.concat([x,self.train])
+            else:
+                p={}
                 if self.correct(self.predict(x), int(x.iloc[0, -1:])):
-                    self.train.append(x)
+                    self.train = pd.concat([self.train, x])
 
-                print(tested.__len__())
-                if tested.__len__() == len:
-                    print(performance)
+            if count % self.samples[9].shape[0] == 0 and count != 0:
+                if p: test = self.perf(p)
+                else: test = self.perf()
+                if performance > test:
                     break
-                if tested.__len__() % 50 == 0:
-                    test = self.test1()
-                    if performance > test:
-                        print(performance)
-                        break
-                    performance = test
+                performance = test
 
-    # todo: returns performance based on output type on current data
+            count += 1
+        return performance
+
 
     # correct
     # ------------------------
@@ -178,16 +191,44 @@ class NearestNeighbor:
     # test1
     #--------------------------
     # tests if the performance of EKNN has degraded
-    def test1(self):
-        test = self.samples[9]  # initializes test using the last sample
+    def perf(self, p={}):
+        test = self.samples[9]
+        performance = []# initializes test using the last sample
 
-        # loops through all indexs / keys in test data and appends the outcome of predicting each vector to list
-        performance = [self.correct(self.predict(key), test.loc[key,].iat[-1]) for key in test.to_dict('index').keys()]
-        return performance.count(True)  # returns the amount of correct predictions
+        for key in test.to_dict('index').keys():  # iterates through each index in the training data
+            px = self.predict(key, p)  # gets prediction for index / vector
+            actual = test.loc[key,]["class"]  # sets actual class for index / vector
+            outcome = self.correct(px, actual)  # checks if prediction == class, returns boolean
+            # print("actual:", actual)
+            # print('remaining:',len)
+            performance.append(outcome)  # adds outcome to performance list
+        # loops through all indices / keys in test data and appends the outcome of predicting each vector to list
+        #performance = [self.correct(self.predict(key), test.loc[key,].iat[-1]) for key in tqdm(test.to_dict('index').keys())]
+        return performance.count(True) / test.shape[0]  # returns the amount of correct predictions
+
+    # tuneK
+    #--------------------------------------
+    # tunes k for the data set to use with KNN EKNN and Kmeans
+    def tuneK(self):
+        k = 1
+        tune = {}
+        for i in trange(10):
+            self.k = k
+            performance = self.KNN(tune=True)
+            tune[k] = performance
+            if performance == 1:
+                break
+            k += 2
+        l = pd.DataFrame(tune, index=['performance']).transpose()
+        kk = l[l.performance == l.performance.max()]
+        self.k = kk.iat[0,0]
+        return tune
 
 
-test = NearestNeighbor('breast-cancer-wisconsin.data')
+test = NearestNeighbor('glass.data')
 
+print(test.tuneK())
 print(test.KNN())
+print(test.EKNN())
 
 

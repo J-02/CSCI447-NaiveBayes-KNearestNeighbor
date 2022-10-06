@@ -15,23 +15,29 @@ def getSamples(dataset):
 # Creates samples for classification
 
     if 'class' in df.columns:
+        sample = df.groupby('class', group_keys=False).apply(lambda x: x.sample(frac=.1, replace=False, random_state=0))
+        df = df.drop(sample.index)
+        tune = sample
         for i in range(10):
             n = 1/(10-i)
             sample = df.groupby('class', group_keys=False).apply(lambda x: x.sample(frac=n, replace=False, random_state=0))
             df = df.drop(sample.index)
             samples.append(sample)
 
-        return samples
+        return samples, tune
 
 # Creates samples for regression
 
     else:
         df = df.sort_values(by=df.columns[-1])
+        sample = df.groupby('class', group_keys=False).apply(lambda x: x.sample(frac=.1, replace=False, random_state=0))
+        df = df.drop(sample.index)
+        tune = sample
         for i in range(10):
             sample = df.iloc[i::10, :]
             samples.append(sample)
 
-        return samples
+        return samples, tune
 
 def CrossValidation():
     pass
