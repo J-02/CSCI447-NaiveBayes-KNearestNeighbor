@@ -8,8 +8,10 @@ from itertools import repeat
 # Nearest Neighbor
 # -----------------------
 # Will add all nearest neighbor algorithms here
-# todo: k-means, knn
+# todo: k-means, regression
 class NearestNeighbor:
+
+    # initializes training data and determines the types of
 
     def __init__(self, data):
         self.data = pd.read_csv("Data/"+data,index_col=0, header=0)
@@ -26,29 +28,32 @@ class NearestNeighbor:
         else:
             self.classification = False
 
-    def getDistance(self, x, y):
+    def getDistance(self, x, y,p={}):
         #print('getting distance:', x, y)
         if not isinstance(x, pd.DataFrame):
-            x = pd.DataFrame(self.data.loc[x]).transpose()
+            X = pd.DataFrame(self.data.loc[x]).transpose()
         if not isinstance(y, pd.DataFrame):
-            y = pd.DataFrame(self.data.loc[y]).transpose()
+            Y = pd.DataFrame(self.data.loc[y]).transpose()
 
         if self.type == 'discrete':
-        #needs work, currently outputs numpy array
-            return np.append(y.to_numpy(),dist.VDM(self.train,x,y))
+        #needs work, currently outputs numpy array todo
+            return y, dist.VDM(self.train, X, Y,p), Y.iat[0,-1]
+
         else:
-            return np.append(y.to_numpy(),dist.EuclideanD(x,y))
+            return y, dist.EuclideanD(X,Y), Y.iat[0,-1]
 
-    def getNieghbors(self, point):
+    def getNieghbors(self, point,p={}):
         y = self.train.to_dict('index')
-        dist = [self.getDistance(point, key) for key in self.train.to_dict('index').keys()]
-        dist.sort(key=lambda x: x[1])
-        return dist[:self.k]
+        distance = [self.getDistance(point, key,p) for key in self.train.to_dict('index').keys()]
+        distance.sort(key=lambda x: x[1])
+        return distance[:self.k]
 
-    def predict(self, x):
-        neighbors = pd.DataFrame(self.getNieghbors(x))
+    def predict(self, x,p={}):
+        neighbors = pd.DataFrame(self.getNieghbors(x,p))
+
         if self.classification:
-            Px = int(neighbors.iloc[:,-2].mode())
+            Px = neighbors.iloc[:,-1].value_counts().idxmax()
+            #print('prediction:',Px)
             return Px
         else:
             pass
@@ -56,7 +61,18 @@ class NearestNeighbor:
     def KNN(self):
         self.train = pd.concat((self.samples[0:9]))
         test = self.samples[9]
-        performance = [self.correct(self.predict(key), test.loc[key].iat[-1]) for key in test.to_dict('index').keys()]
+        p = dist.initialize(self.train)
+        performance = []
+        len = test.shape[0]
+        for key in test.to_dict('index').keys():
+            px = self.predict(key,p)
+            actual = test.loc[key,]["class"]
+            outcome = self.correct(px, actual)
+            #print("actual:", actual)
+            #print('remaining:',len)
+            performance.append(outcome)
+            len -= 1
+        print(performance.count(True),"/",test.shape[0])
         return performance.count(True)
 
 # Removes incorrectly classified points until performance degrades todo: add terminal conditions
@@ -109,8 +125,9 @@ class NearestNeighbor:
 
 
 
-test = NearestNeighbor('glass.data')
-test.KNN()
+test = NearestNeighbor('breast-cancer-wisconsin.data')
+
+print(test.KNN())
 
 
 

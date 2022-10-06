@@ -1,12 +1,13 @@
 import pandas as pd
 import numpy as np
 import CrossValidation as cv
+import time
 
 # Value difference metric
 #---------------------------------------------------------------------
 # takes two data points and finds the differences between each discrete feature returns aggregate distance between features
 # if feature not on feature difference matrix defaults to 0 for distance
-def VDM(data, X, Y, p=2):
+def depVDM(data, X, Y, p=2):
     FDMs = FDM(data) #
     d = 0
     for i in range(len(FDMs)):
@@ -60,22 +61,40 @@ def FDM(data,p=2):
 
 # new vdm:
 def initialize(data):
-    pass
-def VDM2(data, x, y):
+
+    probabilities = {}
+    for c in data['class'].unique():
+        for feature in data.columns[data.columns != 'class']:
+            values = data[feature].unique()
+            for value in values:
+                ID = str(feature) + ", " + str(value) + ', ' + str(c)
+                probability = getProb(data, feature, value, c)
+                probabilities[ID] = probability
+    return probabilities
+def VDM(data, x, y, probabilities = {}):
     x = x.to_dict('records')[0]
     y = y.to_dict('records')[0]
-    values = [x,y]
-    for i in values:
-    for k,v in i:
+    totaldist = 0
+    for k,v in x.items():
+        if k == 'class':
+            continue
         xprob = 0
         yprob = 0
+        dist = 0
         for i in data['class'].unique():
-            xprob += getProb(data, k, v, i)
-            yprob += getProb(data, k, y.get)
-            dist +=
+            if probabilities:
+                ID = str(k) + ", " + str(x[k]) + ', ' + str(i)
+                if ID in probabilities.keys(): xprob = probabilities[ID]
+                ID = str(k) + ", " + str(y[k]) + ', ' + str(i)
+                if ID in probabilities.keys(): yprob = probabilities[ID]
+            else:
+                xprob = getProb(data, k, v, i)
+                yprob = getProb(data, k, y[k], i)
 
+            dist += abs(xprob-yprob)**2
+        totaldist += dist**(1/2)
+    return totaldist
 
-    pass
 
 def getProb(data,V_i, v_i, c_a): # gets P(Ca | Vi)
     x = data.loc[data[V_i] == v_i]  # Finds rows with the given feature value
@@ -110,11 +129,28 @@ def kindaNN():
         x = samples.iloc[[0]]
         y = samples.drop(x.index)
 
-        VDM2(train,x,y)
-
         print(x)
         print(y)
+        start = time.perf_counter()
+        print("v1 Distance:", depVDM(train, x, y))
+        end = time.perf_counter()
+        ms = (end - start) * 10 ** 6
+        print(f"Elapsed {ms:.03f} micro secs.")
+        start = time.perf_counter()
+        print("v2 Distance:", VDM(train, x, y))
+        end = time.perf_counter()
+        ms = (end - start) * 10 ** 6
+        print(f"Elapsed {ms:.03f} micro secs.")
+        start = time.perf_counter()
+        p= initialize(train)
+        end = time.perf_counter()
+        ms = (end - start) * 10 ** 6
+        print("Initialization:",f"Elapsed {ms:.03f} micro secs.")
 
-        print("Distance:",VDM(train,x,y))
+        start = time.perf_counter()
+        print("v3 Distance:", VDM(train, x, y, p))
+        end = time.perf_counter()
+        ms = (end - start) * 10 ** 6
+        print(f"Elapsed {ms:.03f} micro secs.")
 
-kindaNN()
+#kindaNN()
