@@ -30,11 +30,11 @@ def getSamples(dataset):
 
     else:
         df = df.sort_values(by=df.columns[-1])
-        sample = df.groupby('class', group_keys=False).apply(lambda x: x.sample(frac=.1, replace=False, random_state=0))
-        df = df.drop(sample.index)
+        sample = df.iloc[0::10, :]
+        df2 = df.drop(sample.index)
         tune = sample
         for i in range(10):
-            sample = df.iloc[i::10, :]
+            sample = df2.iloc[i::10, :]
             samples.append(sample)
 
         return samples, tune

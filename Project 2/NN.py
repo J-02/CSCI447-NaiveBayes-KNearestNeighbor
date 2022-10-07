@@ -1,5 +1,6 @@
 import pandas as pd
 import time
+import numpy as np
 import CrossValidation as cv
 import DistanceFunctions as dist
 from tqdm.auto import tqdm, trange
@@ -29,7 +30,8 @@ class NearestNeighbor:
             self.classification = True  # classification
         else:
             self.classification = False # regression
-            self.eps = 10  # todo epsilon needs tuned
+            self.eps = 0.5  # todo epsilon needs tuned
+            self.bandwith = 0 # todo bandwidth needs tuned
 
 
     # getDistance:
@@ -88,15 +90,15 @@ class NearestNeighbor:
         if p is None:
             p = {}
         nearest = pd.DataFrame(self.getNeighbors(x, p))  # casts getNeighbors to data frame [index, distance, class]
-        kneighbors = self.data.loc[list(nearest[0])]  # grabs information of nearest neighbors from data
+        neighborhood = self.data.loc[list(nearest[0])]  # grabs information of nearest neighbors from data
 
         # tests whether regression or classification
         if self.classification:
-            Px = kneighbors.iloc[:, -1].value_counts().idxmax()  # gets class with most votes / occurrences
+            Px = nearest.iloc[:, -1].value_counts().idxmax()  # gets class with most votes / occurrences
             # print('prediction:',Px)
             return Px  # returns prediction as class
         else:  # todo: need to add regression
-            pass
+            return self.regression(x, nearest)
 
     # KNN
     # ------------------------
@@ -114,19 +116,19 @@ class NearestNeighbor:
         if self.classification:  # if data is discrete initializes probabilities from training data for vdm distance
             p = dist.initialize(self.train)
 
-            for key in test.to_dict('index').keys():  # iterates through each index in the training data
+            for key in tqdm(test.to_dict('index').keys()):  # iterates through each index in the training data
                 px = self.predict(key, p)  # gets prediction for index / vector
                 actual = test.loc[key,]["class"]  # sets actual class for index / vector
                 outcome = self.correct(px, actual)  # checks if prediction == class, returns boolean
-                #print("actual:", actual)
+                print("actual:", actual)
                 #print('remaining:',len)
                 performance.append(outcome)  # adds outcome to performance list
                 #len -= 1
         else:
-            for key in test.to_dict('index').keys():  # iterates through each index in the training data
+            for key in tqdm(test.to_dict('index').keys()):  # iterates through each index in the training data
                 px = self.predict(key)
                 actual = test.loc[key,].iat[-1]  # sets actual value for index / vector
-                outcome = self.correct(px, actual, self.eps)  # checks if prediction is with in eps of actual, returns boolean
+                outcome = self.correct(px, actual)  # checks if prediction is with in eps of actual, returns boolean
                 # print("actual:", actual)
                 # print('remaining:',len)
                 performance.append(outcome)  # adds outcome to performance list
@@ -175,7 +177,7 @@ class NearestNeighbor:
     # prediction: the predicted class or value in the case of regression
     # actual: actual class or value
     # eps: epsilon, error allowed for regression to be considered correct
-    def correct(self, prediction, actual, eps=0):
+    def correct(self, prediction, actual, ):
 
         if self.classification:
             if prediction == actual:
@@ -183,7 +185,7 @@ class NearestNeighbor:
             else:
                 return False
         else:
-            if abs(prediction - actual) < eps:
+            if abs(prediction - actual) < self.eps:
                 return True
             else:
                 return False
@@ -224,10 +226,25 @@ class NearestNeighbor:
         self.k = kk.iat[0,0]
         return tune
 
+    def regression(self, x, kN):
+        neighborhood = kN.to_dict('records')
+        h = self.bandwith
+        numer = sum([self.gaussianK(item[1])*item[2] for item in neighborhood])
+        denom = sum([self.gaussianK(item[1]) for item in neighborhood])
+        px = numer / denom
+        #print('Prediction:', px)
+        return px
 
-test = NearestNeighbor('glass.data')
+    @staticmethod
+    def gaussianK(u):
+        x = (-u**2) / 2
+        x = np.exp(x)
+        x = x / (2*np.pi)**(1/2)
+        return x
 
-print(test.tuneK())
+test = NearestNeighbor('abalone.data')
+
+#print(test.tuneK())
 print(test.KNN())
 print(test.EKNN())
 

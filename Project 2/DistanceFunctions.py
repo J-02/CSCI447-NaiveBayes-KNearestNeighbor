@@ -112,12 +112,18 @@ def EuclideanD(x,y):
     distance = 0
     for i in range(x.shape[1]-1):
         distance += abs(x.iloc[0,i]-y.iloc[0,i])
-    distance = distance**(1/2)
+    return distance
+
+def EuclideanDV2(x,y):
+    distance = 0
+    x = pd.DataFrame(x).transpose()
+    for i in range(x.shape[1] - 1):
+        distance += abs(x.iloc[0, i] - y.iloc[0, i])
     return distance
 
 
 def kindaNN():
-    data = cv.getSamples('breast-cancer-wisconsin.data')
+    data = cv.getSamples('breast-cancer-wisconsin.data')[0]
     train = pd.DataFrame()
 
     for i in range(len(data)):
@@ -125,12 +131,14 @@ def kindaNN():
         if train.size == 0:
             train = data[i]
         else:
-            train = train.append(data[i])
+            train = pd.concat([train,data[i]])
 
         samples = data[-1].sample(n=2)
         x = samples.iloc[[0]]
         y = samples.drop(x.index)
-
+        list =  train.apply(EuclideanDV2, axis=1, args=[y])
+        list2 = train.apply(EuclideanDV2, axis=1, args=[y], result_type='reduce')
+        list3 = train.apply(EuclideanDV2, axis=1, args=[y], result_type='broadcast')
         print(x)
         print(y)
         start = time.perf_counter()
