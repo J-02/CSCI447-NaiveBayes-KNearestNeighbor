@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from numpy.linalg import norm
 import CrossValidation as cv
 import time
 from numba import njit
@@ -114,6 +115,12 @@ def EuclideanD(x,y):
         distance += abs(x.iloc[0,i]-y.iloc[0,i])
     return distance
 
+
+# input is vectors
+def EuclideanVector(x,y):
+    distance = norm(x-y)
+    return distance
+
 def EuclideanDV2(x,y):
     distance = 0
     x = pd.DataFrame(x).transpose()
@@ -122,45 +129,22 @@ def EuclideanDV2(x,y):
     return distance
 
 
-def kindaNN():
-    data = cv.getSamples('breast-cancer-wisconsin.data')[0]
-    train = pd.DataFrame()
+def optimizedNN():
+    data = cv.getSamples('abalone.data')[0]
+    train = pd.concat(data[0:9])
+    trainV = train.to_numpy()
+    test = pd.DataFrame(data[9])
+    testV = test.to_numpy()
+    for i in testV:
+        dist = [EuclideanVector(i,y) for y in trainV]
+        train['Dist'] = dist
+        neighbors = train.nsmallest(5,'Dist')
+        print(neighbors)
+def getDistances(test,train):
+    neighbors = []
+    neighbors = [EuclideanVector(i,y) for y in train]
+    return neighbors
 
-    for i in range(len(data)):
 
-        if train.size == 0:
-            train = data[i]
-        else:
-            train = pd.concat([train,data[i]])
 
-        samples = data[-1].sample(n=2)
-        x = samples.iloc[[0]]
-        y = samples.drop(x.index)
-        list =  train.apply(EuclideanDV2, axis=1, args=[y])
-        list2 = train.apply(EuclideanDV2, axis=1, args=[y], result_type='reduce')
-        list3 = train.apply(EuclideanDV2, axis=1, args=[y], result_type='broadcast')
-        print(x)
-        print(y)
-        start = time.perf_counter()
-        print("v1 Distance:", depVDM(train, x, y))
-        end = time.perf_counter()
-        ms = (end - start) * 10 ** 6
-        print(f"Elapsed {ms:.03f} micro secs.")
-        start = time.perf_counter()
-        print("v2 Distance:", VDM(train, x, y))
-        end = time.perf_counter()
-        ms = (end - start) * 10 ** 6
-        print(f"Elapsed {ms:.03f} micro secs.")
-        start = time.perf_counter()
-        p= initialize(train)
-        end = time.perf_counter()
-        ms = (end - start) * 10 ** 6
-        print("Initialization:",f"Elapsed {ms:.03f} micro secs.")
 
-        start = time.perf_counter()
-        print("v3 Distance:", VDM(train, x, y, p))
-        end = time.perf_counter()
-        ms = (end - start) * 10 ** 6
-        print(f"Elapsed {ms:.03f} micro secs.")
-
-#kindaNN()
