@@ -1,9 +1,9 @@
 import pandas as pd
-import timeit
 import numpy as np
 import CrossValidation as cv
 import DistanceFunctions as dist
 from tqdm.auto import tqdm, trange
+from math import exp
 
 
 # Nearest Neighbor
@@ -31,7 +31,7 @@ class NearestNeighbor:
         else:
             self.classification = False # regression
             self.eps = 0.5  # todo epsilon needs tuned
-            self.bandwith = 0 # todo bandwidth needs tuned
+            self.bandwith = 100 # todo bandwidth needs tuned
 
     def KNNv2(self, tune=False):
         if tune:
@@ -95,24 +95,27 @@ class NearestNeighbor:
 
 
     def regression(self, x, kN):
-        h = self.bandwith
-        numer = sum([self.gaussianK(i[1])*i[0] for i in kN])
-        denom = sum([self.gaussianK(i[1]) for i in kN])
-        px = numer / denom
+        h = self.bandwith # 100 for machines 1 works for abalone
+        numer = sum([self.gaussianK(i[1]/h)*i[0] for i in kN])
+        denom = sum([self.gaussianK(i[1]/h) for i in kN])
+        px = (numer / denom) + self.eps
         #print('Prediction:', px)
         return px
 
     @staticmethod
     def gaussianK(u):
         x = (-u**2) / 2
-        x = np.exp(x)
+        x = exp(x)
         x = x / (2*np.pi)**(1/2)
         return x
 
     def tuneEpsilon(self):
         pass
 
-test = NearestNeighbor('abalone.data')
+    def tuneBandwidth(self):
+        pass
+
+test = NearestNeighbor('machine.data')
 
 #print(test.tuneK())
 print("MSE",test.KNNv2())

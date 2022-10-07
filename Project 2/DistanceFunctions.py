@@ -2,8 +2,6 @@ import pandas as pd
 import numpy as np
 from numpy.linalg import norm
 import CrossValidation as cv
-import time
-from numba import njit
 
 # Value difference metric
 #---------------------------------------------------------------------
