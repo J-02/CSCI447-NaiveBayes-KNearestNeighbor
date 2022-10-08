@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import CrossValidation as cv
-import DistanceFunctions as dist
+import distoptimized as dist
 from tqdm.auto import tqdm, trange
 from math import exp
 
@@ -43,19 +43,35 @@ class NearestNeighbor:
         train = self.train
         trainV = train.to_numpy()
         testV = test.to_numpy()
-        for i in tqdm(testV):
-            distance = [dist.EuclideanVector(i, y) for y in trainV]
-            train['Dist'] = distance
-            neighbors = train.nsmallest(self.k, 'Dist').iloc[:,-2:].values
-            px = self.regression(i, neighbors)
-            #print("Prediction:",px)
-            actual = i[-1]
-            #print('Actual:',actual)
-            error = actual - px
-            error = error**2
-            MSE =+ error
-        MSE = MSE / testV.shape[0]
-        return MSE
+        if not self.classification:
+            for i in tqdm(testV):
+                distance = [dist.EuclideanVector(i, y) for y in trainV]
+                train['Dist'] = distance
+                neighbors = train.nsmallest(self.k, 'Dist').iloc[:,-2:].values
+                px = self.regression(i, neighbors)
+                #print("Prediction:",px)
+                actual = i[-1]
+                #print('Actual:',actual)
+                error = actual - px
+                error = error**2
+                MSE =+ error
+            MSE = MSE / testV.shape[0]
+            return MSE
+        else:
+            p = dist.initialize(train)
+            performance = []
+            for x in (testV):
+                distance = [dist.VDMv2(train, x, y, p) for y in trainV]
+                train['Dist'] = distance
+                neighbors = train.nsmallest(5, 'Dist')
+                px = self.classify(neighbors)
+                actual = x[-1]  # sets actual value for index / vector
+                outcome = self.correct(px, actual)
+                print("Actual | Predicted")
+                print(actual, "|", px)
+                performance.append(outcome)
+            return performance.count(True) / testV.shape[0]
+
     # correct
     # ------------------------
     # prediction: the predicted class or value in the case of regression
@@ -92,8 +108,9 @@ class NearestNeighbor:
         kk = l[l.performance == l.performance.max()]
         self.k = kk.iat[0,0]
         return tune
-
-
+    def classify(self, neighbors):
+        Px = neighbors['class'].value_counts().idxmax()
+        return Px
     def regression(self, x, kN):
         h = self.bandwith # 100 for machines 1 works for abalone
         numer = sum([self.gaussianK(i[1]/h)*i[0] for i in kN])
@@ -119,6 +136,8 @@ test = NearestNeighbor('machine.data')
 
 #print(test.tuneK())
 print("MSE",test.KNNv2())
+test = NearestNeighbor('breast-cancer-wisconsin.data')
+print("% correct",test.KNNv2())
 #print(test.EKNN())
 
 
