@@ -8,6 +8,8 @@ import os
 from functools import wraps
 import time
 import matplotlib.pylab as plt
+from IPython.display import display
+
 
 def timeit(my_func):
     @wraps(my_func)
@@ -129,14 +131,6 @@ class NearestNeighbor:
         else:
 
             t, p = dist.initialize(train)
-            testD = test.to_dict('index')
-            for x in testD.values():
-                distance = dist.VDM(t, x, p)
-                train['Dist'] = distance
-                neighbors = train.nsmallest(5, 'Dist').iloc[:,-2:].values
-                px = self.predict(neighbors)
-                performance.append(self.correct(px, list(x.values())[-1]))
-
             for x in train.to_dict('index').keys():
                 if count == len:
                     break
@@ -263,11 +257,22 @@ class NearestNeighbor:
         x = x / (2*np.pi)**(1/2)
         return x
 
+    # tune
+    # ----
+    # tunes all hyperparameters for the data set
+    # if classification only tunes K
+    # if classification tunes k then performs grid search of bandwidth and epsilon
+    @timeit
+    def tuneit(self):
+        if self.classification:
+            return self.tuneK()
+        else:
+            return self.tuneBandwidth()
+
     # tuneEpsilon
     # -------------
     # used for regression
     # tunes epsilon to minimize MSE of the data set
-
     def tuneEpsilon(self):
         pass
 
@@ -277,22 +282,50 @@ class NearestNeighbor:
     # tuned by minimizing MSE for the data set
 
     def tuneBandwidth(self):
-        pass
+        h = 5
+        self.bandwith = h
+        tune = {}
 
+        for i in trange(10):
+            tune[h] = self.tuneK()[1]
+            h += 5
+            self.bandwith = h
+
+        df = pd.DataFrame(tune)
+        k, h = df.stack().index[np.argmin(df.values)]
+
+        plt.imshow(df, cmap="RdYlBu")
+
+        # Displaying a color bar to understand
+        # which color represents which range of data
+        plt.colorbar()
+
+        # Assigning labels of x-axis
+        # according to dataframe
+        plt.xticks(range(len(df)), df.columns)
+
+        # Assigning labels of y-axis
+        # according to dataframe
+        plt.yticks(range(len(df)), df.index)
+
+        # Displaying the figure
+        plt.show()
+        self.k = k
+        self.bandwith = h
+        return k, h
         # tuneK
         # --------------------------------------
         # tunes k for the data set to use with KNN EKNN and Kmeans
         # sets the k for the data set, carries through all functions
-    @timeit
     def tuneK(self):
         k = 1
         tune = {}
         self.train = pd.concat((self.samples))
-        for i in trange(self.train.shape[0] // 100):
+        for i in range(10):
             self.k = k
             performance = self.KNN(tune=True)
             tune[k] = performance
-            k += 1
+            k += 5
 
         if self.classification:
            kk = max(tune, key=tune.get)
@@ -304,46 +337,15 @@ class NearestNeighbor:
 
         lists = sorted(tune.items())
         x, y = zip(*lists)
-        plt.plot(x, y)
-        plt.xlabel("K neighbors")
-        if self.classification: plt.ylabel("Prob")
-        else: plt.ylabel("MSE")
-        plt.show()
+        #plt.plot(x, y)
+        #plt.xlabel("K neighbors")
+        #if self.classification: plt.ylabel("Prob")
+        #else: plt.ylabel("MSE")
+        # plt.show()
         return kk, tune
 
-        def tuneK(self):
-            k = 1
-            tune = {}
-            self.train = pd.concat((self.samples))
-            for i in trange(100):
-                self.k = k
-                performance = self.KNN(tune=True)
-                tune[k] = performance
-                k += 1
 
-            if self.classification:
-                kk = max(tune, key=tune.get)
 
-            else:
-                kk = min(tune, key=tune.get)
-
-            self.k = kk
-
-            lists = sorted(tune.items())
-            x, y = zip(*lists)
-            plt.plot(x, y)
-            plt.xlabel("K neighbors")
-            plt.ylabel("Prob")
-            plt.show()
-            return kk, tune
-
-    # tune
-    # ----
-    # tunes all hyperparameters for the data set
-    # if classification only tunes K
-    # if classification tunes k then performs grid search of bandwidth and epsilon
-    def tune(self):
-        return self.tuneK()
 
 
 
@@ -352,7 +354,7 @@ for file in os.listdir("Data"):
     if file.endswith('.data'):
         print(file)
         test1 = NearestNeighbor(file)
-        print(test1.tuneK())
+        print(test1.tuneit())
         #print(tes1t.KNN())
         print(test1.EKNN())
         print(test1.result,": ", test1.KNN())

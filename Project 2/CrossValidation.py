@@ -15,12 +15,12 @@ def getSamples(dataset):
 # Creates samples for classification
 
     if 'class' in df.columns:
-        sample = df.groupby('class', group_keys=False).apply(lambda x: x.sample(frac=.1, replace=False, random_state=0))
+        sample = df.groupby('class', group_keys=False).apply(lambda x: x.sample(frac=.1, replace=False))
         df = df.drop(sample.index)
         tune = sample
         for i in range(10):
             n = 1/(10-i)
-            sample = df.groupby('class', group_keys=False).apply(lambda x: x.sample(frac=n, replace=False, random_state=0))
+            sample = df.groupby('class', group_keys=False).apply(lambda x: x.sample(frac=n, replace=False))
             df = df.drop(sample.index)
             samples.append(sample)
 
