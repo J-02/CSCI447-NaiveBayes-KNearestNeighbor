@@ -1,10 +1,23 @@
 import pandas as pd
 import numpy as np
 import CrossValidation as cv
-import distoptimized as dist
+import DistanceV as dist
 from tqdm.auto import tqdm, trange
 from math import exp
+import os
+from functools import wraps
+import time
+def timeit(my_func):
+    @wraps(my_func)
+    def timed(*args, **kw):
+        tstart = time.time()
+        output = my_func(*args, **kw)
+        tend = time.time()
 
+        print('"{}" took {:.3f} ms to execute\n'.format(my_func.__name__, (tend - tstart) * 1000))
+        return output
+
+    return timed
 
 # Nearest Neighbor
 # -----------------------
@@ -18,9 +31,9 @@ class NearestNeighbor:
         self.name = data  # saves dataset name
         if self.name in ['breast-cancer-wisconsin.data', 'soybean-small.data']:  # checks if values are discrete or
             # continuous
-            self.type = 'discrete'  # uses VDM distance function
+            self.discrete = True  # uses VDM distance function
         else:
-            self.type = 'other'  # uses Euclidean distance function
+            self.discrete = False  # uses Euclidean distance function
         self.samples, self.tune = cv.getSamples(data)  # creates 10 stratified samples from the dataset in a list [sample1,...,
         # sample10]
         self.k = 5  # how many nearest neighbors to use
@@ -33,7 +46,15 @@ class NearestNeighbor:
             self.eps = 0.5  # todo epsilon needs tuned
             self.bandwith = 100 # todo bandwidth needs tuned
 
-    def KNNv2(self, tune=False):
+    def predict(self, neighbors):
+        if self.classification:
+            px = self.classify(neighbors)
+        else:
+            px = self.regression(neighbors)
+        return px
+
+
+    def KNN(self, tune=False):
         if tune:
             test = self.tune
             self.train = pd.concat((self.samples))  # combines all but one sample
@@ -43,41 +64,36 @@ class NearestNeighbor:
         train = self.train
         trainV = train.to_numpy()
         testV = test.to_numpy()
-        if not self.classification:
-            for i in tqdm(testV):
-                distance = [dist.EuclideanVector(i, y) for y in trainV]
+        performance = []
+
+
+        if not self.discrete:
+            for i in testV:
+                distance = np.sum((i-trainV)**2,axis=1)**(1/2)
                 train['Dist'] = distance
                 neighbors = train.nsmallest(self.k, 'Dist').iloc[:,-2:].values
-                px = self.regression(i, neighbors)
-                #print("Prediction:",px)
-                actual = i[-1]
-                #print('Actual:',actual)
-                error = actual - px
-                error = error**2
-                MSE =+ error
-            MSE = MSE / testV.shape[0]
-            return MSE
+                px = self.predict(neighbors)
+                performance.append(self.correct(px, i[-1]))
+
         else:
-            p = dist.initialize(train)
-            performance = []
-            for x in (testV):
-                distance = [dist.VDMv2(train, x, y, p) for y in trainV]
+            t, p = dist.initialize(train)
+            testD = test.to_dict('index')
+            for x in testD.values():
+                distance = dist.VDM(t, x, p)
                 train['Dist'] = distance
-                neighbors = train.nsmallest(5, 'Dist')
-                px = self.classify(neighbors)
-                actual = x[-1]  # sets actual value for index / vector
-                outcome = self.correct(px, actual)
-                print("Actual | Predicted")
-                print(actual, "|", px)
-                performance.append(outcome)
-            return performance.count(True) / testV.shape[0]
+                neighbors = train.nsmallest(5, 'Dist').iloc[:,-2:].values
+                px = self.predict(neighbors)
+                performance.append(self.correct(px, list(x.values())[-1]))
+
+        correct = self.evaluate(performance) / testV.shape[0]
+        return correct
 
     # correct
     # ------------------------
     # prediction: the predicted class or value in the case of regression
     # actual: actual class or value
     # eps: epsilon, error allowed for regression to be considered correct
-    def correct(self, prediction, actual, ):
+    def correct(self, prediction, actual):
 
         if self.classification:
             if prediction == actual:
@@ -85,33 +101,41 @@ class NearestNeighbor:
             else:
                 return False
         else:
-            if abs(prediction - actual) + self.eps:
-                return True
-            else:
-                return False
+            return abs(prediction-actual)**2
+
+    def evaluate(self, performance):
+        if self.classification:
+            return performance.count(True)
+        else:
+            return sum(performance)
 
     # tuneK
     #--------------------------------------
     # tunes k for the data set to use with KNN EKNN and Kmeans
     # sets the k for the data set, carries throught to all funtions
+    @timeit
     def tuneK(self):
         k = 1
         tune = {}
-        for i in trange(10):
+        for i in trange(100):
             self.k = k
             performance = self.KNN(tune=True)
             tune[k] = performance
             if performance == 1:
                 break
             k += 2
-        l = pd.DataFrame(tune, index=['performance']).transpose()
-        kk = l[l.performance == l.performance.max()]
-        self.k = kk.iat[0,0]
-        return tune
+
+        if self.classification:
+            kk = max(tune, key=tune.get)
+        else:
+            kk = min(tune, key=tune.get)
+        self.k = kk
+        return kk
     def classify(self, neighbors):
-        Px = neighbors['class'].value_counts().idxmax()
+        neighbors = pd.DataFrame(neighbors)
+        Px = neighbors.iloc[:,0].value_counts().idxmax()
         return Px
-    def regression(self, x, kN):
+    def regression(self, kN):
         h = self.bandwith # 100 for machines 1 works for abalone
         numer = sum([self.gaussianK(i[1]/h)*i[0] for i in kN])
         denom = sum([self.gaussianK(i[1]/h) for i in kN])
@@ -132,12 +156,10 @@ class NearestNeighbor:
     def tuneBandwidth(self):
         pass
 
-test = NearestNeighbor('machine.data')
 
-#print(test.tuneK())
-print("MSE",test.KNNv2())
-test = NearestNeighbor('breast-cancer-wisconsin.data')
-print("% correct",test.KNNv2())
-#print(test.EKNN())
-
-
+for file in os.listdir("Data"):
+    if file.endswith('.data'):
+        print(file)
+        test = NearestNeighbor("soybean-small.data")
+        #print(test.tuneK())
+        print(test.KNN())
