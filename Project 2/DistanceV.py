@@ -48,8 +48,31 @@ def VDM(t, x, p=[]):
     yprob = 0
     pa = np.array([t[i].to_numpy()[:,:-1] for i in range(len(t))]) # puts probabilities of datset in array
     totaldist = np.empty_like(pa)
+    l = []
 
-    xp = np.array([np.tile(np.array(p[i].lookup(list(x.values()),list(x))[:-1]),(pa[0].shape[0],1))  for i in range(len(t[0]['class'].unique()))]) # probabilities for the features of x for each class
+    try:
+        xp = np.array([np.tile(p[i].lookup(list(x.values()), list(x))[:-1], (pa[0].shape[0], 1)) for i in range(len(t[0]['class'].unique()))])
+    except:
+
+        for i in range(len(t[0]['class'].unique())):
+
+            try:
+
+                l1 = np.tile(p[i].lookup(list(x.values()), list(x))[:-1], (pa[0].shape[0], 1))
+                l.append(l1)
+
+            except:
+                l1 = []
+                for k,v in x.items():
+                    if k == "class":
+                        continue
+                    try:
+                        l1.append(p[i].iloc[v,k])
+                    except:
+                        l1.append(0)
+                l.append(np.tile(l1, (pa[0].shape[0], 1)))
+        xp = np.array(l)
+
     fdiff = np.subtract(xp,pa)**2
     fsum= np.sum(fdiff, axis=0)
     distance = np.sum(fsum, axis=1)**(1/2)
