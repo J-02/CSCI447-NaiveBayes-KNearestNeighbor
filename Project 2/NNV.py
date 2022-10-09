@@ -7,6 +7,8 @@ from math import exp
 import os
 from functools import wraps
 import time
+import matplotlib.pylab as plt
+
 def timeit(my_func):
     @wraps(my_func)
     def timed(*args, **kw):
@@ -45,7 +47,7 @@ class NearestNeighbor:
         else:
             self.classification = False  # regression
             self.eps = 0.5  # todo epsilon needs tuned
-            self.bandwith = 100 # todo bandwidth needs tuned
+            self.bandwith = 1000 # todo bandwidth needs tuned
             self.result = "MSE"
 
     # predict
@@ -62,20 +64,22 @@ class NearestNeighbor:
         # tune epsilon to determine if correct results are correct
         self.train = pd.concat((self.samples[0:9]))  # last sample is test data
         train = self.train
+        test = self.samples[9]
         len = self.train.shape[0]
-        performance = 0
+        if self.classification: currentperf = 0
+        if not self.classification: currentperf = np.infty
         count = 0
 
         trainV = train.to_numpy()
         performance = []
 
         if not self.discrete:
-            for x in train.to_dict('index').keys():
+            for x in tqdm(train.to_dict('index').keys()):
                 if count == len:
-                    break
+                    return train
                 count += 1
                 idf = train.loc[x,:]
-                train = train.drop(idf.name)
+                train = train.drop(index=idf.name)
                 i = idf.to_numpy()
                 trainV = train.to_numpy()
                 distance = np.sum((i - trainV) ** 2, axis=1) ** (1 / 2)
@@ -83,20 +87,87 @@ class NearestNeighbor:
                 neighbors = train.nsmallest(self.k, 'Dist').iloc[:, -2:].values
                 train.drop('Dist',axis=1,inplace=True)
                 px = self.predict(neighbors)
-                if self.correct(px, i[-1]):
-                    i = np.transpose(i[:,None])
-                    train = pd.concat([idf,train])
-
+                if not self.classification:
+                    if (px - i[-1]) < self.eps:
+                        i = np.transpose(i[:,None])
+                        train = pd.concat([pd.DataFrame(idf).transpose(),train])
+                    if count % 100 == 0 and count != 0:
+                        testV = test.to_numpy()
+                        trainV = train.to_numpy()
+                        for i in testV:
+                            distance = np.sum((i - trainV) ** 2, axis=1) ** (1 / 2)
+                            train['Dist'] = distance
+                            neighbors = train.nsmallest(self.k, 'Dist').iloc[:, -2:].values
+                            train.drop('Dist', axis=1, inplace=True)
+                            px = self.predict(neighbors)
+                            performance.append(self.correct(px, i[-1]))
+                        correct = self.evaluate(performance) / testV.shape[0]
+                        if correct > currentperf :
+                            return pd.concat([pd.DataFrame(idf).transpose(),train]), currentperf, len
+                        else:
+                            currentperf = correct
+                else:
+                    if self.correct(px, i[-1]):
+                        i = np.transpose(i[:, None])
+                        train = pd.concat([pd.DataFrame(idf).transpose(), train])
+                    if count % 100 == 0 and count != 0:
+                        testV = test.to_numpy()
+                        trainV = train.to_numpy()
+                        for i in testV:
+                            distance = np.sum((i - trainV) ** 2, axis=1) ** (1 / 2)
+                            train['Dist'] = distance
+                            neighbors = train.nsmallest(self.k, 'Dist').iloc[:, -2:].values
+                            train.drop('Dist', axis=1, inplace=True)
+                            px = self.predict(neighbors)
+                            performance.append(self.correct(px, i[-1]))
+                        correct = self.evaluate(performance) / testV.shape[0]
+                        if self.classification and correct < currentperf:
+                            return pd.concat([pd.DataFrame(idf).transpose(),train]), currentperf, len
+                        else:
+                            currentperf = correct
 
         else:
+
             t, p = dist.initialize(train)
             testD = test.to_dict('index')
             for x in testD.values():
                 distance = dist.VDM(t, x, p)
                 train['Dist'] = distance
-                neighbors = train.nsmallest(5, 'Dist').iloc[:, -2:].values
+                neighbors = train.nsmallest(5, 'Dist').iloc[:,-2:].values
                 px = self.predict(neighbors)
-                self.correct(px, list(x.values())[-1])
+                performance.append(self.correct(px, list(x.values())[-1]))
+
+            for x in train.to_dict('index').keys():
+                if count == len:
+                    break
+                count += 1
+                idf = train.loc[x, :]
+                train = train.drop(index=idf.name)
+                i = idf.to_numpy()
+                trainV = train.to_numpy()
+                distance = np.sum((i - trainV) ** 2, axis=1) ** (1 / 2)
+                train['Dist'] = distance
+                neighbors = train.nsmallest(self.k, 'Dist').iloc[:, -2:].values
+                train.drop('Dist', axis=1, inplace=True)
+                px = self.predict(neighbors)
+                if self.correct(px, i[-1]):
+                    i = np.transpose(i[:, None])
+                    train = pd.concat([pd.DataFrame(idf).transpose(), train])
+                    trainV = train.to_numpy()
+                else:
+                    testV = test.to_numpy()
+                    trainV = train.to_numpy()
+                    for i in testV:
+                        distance = np.sum((i - trainV) ** 2, axis=1) ** (1 / 2)
+                        train['Dist'] = distance
+                        neighbors = train.nsmallest(self.k, 'Dist').iloc[:, -2:].values
+                        px = self.predict(neighbors)
+                        performance.append(self.correct(px, i[-1]))
+                    correct = self.evaluate(performance) / testV.shape[0]
+                    if self.classification and correct < currentperf:
+                        return pd.concat([pd.DataFrame(idf).transpose(),train]), currentperf, len
+                    elif correct > currentperf:
+                        return pd.concat([pd.DataFrame(idf).transpose(),train]), currentperf, len
 
     # KNN
     # ---
@@ -162,33 +233,6 @@ class NearestNeighbor:
         else:
             return sum(performance)
 
-    # tuneK
-    #--------------------------------------
-    # tunes k for the data set to use with KNN EKNN and Kmeans
-    # sets the k for the data set, carries through all functions
-    @timeit
-    def tuneK(self):
-        k = 1
-        tune = {}
-        for i in trange(100):
-
-            self.k = k
-            performance = self.KNN(tune=True)[0]
-            tune[k] = performance
-            if performance == 1:
-                break
-            k += 2
-
-        if self.classification:
-            kk = max(tune, key=tune.get)
-
-        else:
-            kk = min(tune, key=tune.get)
-
-        self.k = kk
-
-        return kk
-
     # classify
     # --------
     # gets class with most votes
@@ -235,19 +279,81 @@ class NearestNeighbor:
     def tuneBandwidth(self):
         pass
 
+        # tuneK
+        # --------------------------------------
+        # tunes k for the data set to use with KNN EKNN and Kmeans
+        # sets the k for the data set, carries through all functions
+    @timeit
+    def tuneK(self):
+        k = 1
+        tune = {}
+        self.train = pd.concat((self.samples))
+        for i in trange(self.train.shape[0] // 100):
+            self.k = k
+            performance = self.KNN(tune=True)
+            tune[k] = performance
+            k += 1
+
+        if self.classification:
+           kk = max(tune, key=tune.get)
+
+        else:
+            kk = min(tune, key=tune.get)
+
+        self.k = kk
+
+        lists = sorted(tune.items())
+        x, y = zip(*lists)
+        plt.plot(x, y)
+        plt.xlabel("K neighbors")
+        if self.classification: plt.ylabel("Prob")
+        else: plt.ylabel("MSE")
+        plt.show()
+        return kk, tune
+
+        def tuneK(self):
+            k = 1
+            tune = {}
+            self.train = pd.concat((self.samples))
+            for i in trange(100):
+                self.k = k
+                performance = self.KNN(tune=True)
+                tune[k] = performance
+                k += 1
+
+            if self.classification:
+                kk = max(tune, key=tune.get)
+
+            else:
+                kk = min(tune, key=tune.get)
+
+            self.k = kk
+
+            lists = sorted(tune.items())
+            x, y = zip(*lists)
+            plt.plot(x, y)
+            plt.xlabel("K neighbors")
+            plt.ylabel("Prob")
+            plt.show()
+            return kk, tune
+
     # tune
     # ----
     # tunes all hyperparameters for the data set
     # if classification only tunes K
     # if classification tunes k then performs grid search of bandwidth and epsilon
     def tune(self):
-        pass
+        return self.tuneK()
+
+
 
 
 for file in os.listdir("Data"):
     if file.endswith('.data'):
         print(file)
-        test = NearestNeighbor(file)
-        print(test.EKNN())
-        print(test.result,": ", test.KNN())
+        test1 = NearestNeighbor(file)
+        print(test1.tuneK())
+        #print(tes1t.KNN())
+        print(test1.EKNN())
+        print(test1.result,": ", test1.KNN())
 
