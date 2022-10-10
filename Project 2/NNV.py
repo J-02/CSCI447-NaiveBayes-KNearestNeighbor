@@ -448,7 +448,7 @@ class NearestNeighbor:
         plt.plot(x, y)
         plt.xlabel("K neighbors")
         if self.classification: plt.ylabel("Prob")
-        else: #plt.ylabel("MSE")
+        else: plt.ylabel("MSE")
         plt.show()
         plt.clf()
         return kk, tune[kk]
