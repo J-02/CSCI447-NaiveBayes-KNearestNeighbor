@@ -449,7 +449,7 @@ class NearestNeighbor:
         plt.xlabel("K neighbors")
         if self.classification: plt.ylabel("Prob")
         else: plt.ylabel("MSE")
-        plt.show()
+        plt.savefig("ktune"+self.name[:-4]+'png')
         plt.clf()
         return kk, tune[kk]
 
