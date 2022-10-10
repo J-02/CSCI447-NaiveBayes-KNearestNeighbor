@@ -368,7 +368,7 @@ class NearestNeighbor:
     # tunes epsilon to minimize MSE of the data set
     def tuneEpsilon(self):
         perf = {}
-        for i in tqdm(np.random.randint(1, 100, 25)/100):
+        for i in tqdm(np.random.randint(0, 100, 25)/100):
             self.eps = i
             #print(i)
             perf[i] = self.EKNN(tune=True)
@@ -399,7 +399,7 @@ class NearestNeighbor:
         results = []
 
         for k in trange(1,10):
-            for h in np.random.randint(x, 10*x, 5):
+            for h in np.random.randint(x, 10*x, 25):
                 self.bandwith = h
                 MSE = self.KNN(tune=True)
                 results.append([k,h,MSE])
