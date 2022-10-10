@@ -73,57 +73,64 @@ class NearestNeighbor:
 
         # initialization
         train = self.train  # initializes local training set to edit
-        edited = train # initializes local testing set to test performance
+        edited = train # initializes local edited training set to test performance for reduced data set
         len = self.train.shape[0]  # Creates variable to check if we have gone over every element in the training data
         if self.classification: currentperf = 0  # determines what value performance starts at
         if not self.classification: currentperf = np.infty  # lower is better for regression performance value MSE
-        count = 0  # initializes how many times a loop has been through
+        count = 0  # initializes how many times we have edited
         performance = []  # initializes list of performance values
+        increment = (len // 100)  # how often to test performance
+        prevSet = edited  # initializes variable to store previous edited set
+        currentperf = self.performance(test,train)  # sets initial performance
 
         # for regression data sets
         if not self.classification:
-            for x in tqdm(train.to_dict('index').keys()):  # iterating through each element in training data
-                if count == len:  # if all training data has be gone through
+            for x in (train.to_dict('index').keys()):  # iterating through each element in training data
+                if count == len: # if all training data has be gone through
+                    if tune:
+                        return currentperf
+
                     return edited  # returns edited training set
                 count += 1  # adds to amount of elements gone through in training data
 
-                train = self.edit(x, train)
+                edited = self.edit(x, edited)
 
-                if count % (len // 20) == 0 and count != 0:  # tests if condition is met, for every 20th of the data set gone through
-                    correct = self.performance(test, train)
+                if edited.shape[0] < prevSet.shape[0]:  # tests if condition is met, for every 20th of the data set gone through
+                    correct = self.performance(test, edited)
                     # tests if error increased
                     if correct > currentperf:
                         # returns edited data set with best performance, the performance, and the starting size of training data
                         self.clusters = (len - edited.shape[0])
                         if tune:
-                            return performance
+                            return currentperf
                         return edited, currentperf, self.clusters, performance
                     else:
                         # updates performance if it improved and saves the edited training data
                         currentperf = correct
-                        edited = train
+                        prevSet = edited
                         performance.append(correct)
 
         # for classification
         else:
 
             for x in tqdm(train.to_dict('index').keys()):
-                if count == len:
-                    break
                 count += 1
-                train = self.edit(x, train)
-                if count % (len // 20) == 0 and count != 0:  # tests if condition is met, for every 20th of the data set gone through
-                    correct = self.performance(test, train)
+                train = self.edit(x, edited)  # returns data set with or without x depending if correct
+                if count % increment == 0 and count != 0:  # tests if condition is met, for every 20th of the data set gone through
+                    correct = self.performance(test, edited)
                     # tests if error increased
                     if correct < currentperf:
                         # returns edited data set with best performance, the performance, and the starting size of training data
-
+                        if tune:
+                            return currentperf
                         return edited, currentperf, len, performance
                     else:
                         # updates performance if it improved and saves the edited training data
                         currentperf = correct
-                        edited = train
+                        prevSet = edited
                         performance.append(correct)
+        if tune:
+            return currentperf
 
     # edit
     # ----
@@ -133,7 +140,7 @@ class NearestNeighbor:
     def edit(self, x, train):
 
         idf = train.loc[x, :]
-        x = train.loc[x, :].to_dict()# picks singular element from training data
+        x = train.loc[x, :].to_dict()  # picks singular element from training data
         train = train.drop(index=idf.name)  # drops that element from training data
         i = np.array(idf.iloc[:-1].to_numpy() ) # sets element to array for optimized calculation and removes class data
         trainV = np.array(train.iloc[:,:-1].to_numpy()) # sets training data to array for optimized calculation and removes class data
@@ -149,8 +156,10 @@ class NearestNeighbor:
         train.drop('Dist', axis=1, inplace=True)  # removes distance column
         px = self.predict(neighbors)
         # for regression data sets
-        if not self.classification:  # determines which method to use to evaluate correctness
-            if (abs(px - i[-1]) < self.eps):  # if regression estimate is within epsilon of actual value
+        if not self.classification:
+            error = abs(px - i[-1])
+            allowederror = self.eps*i[-1]
+            if error > allowederror:  # if regression estimate is within epsilon of actual value
                 train = pd.concat([pd.DataFrame(idf).transpose(), train])  # readds element to training data if correct
         # for classification data sets
         else:
@@ -318,7 +327,8 @@ class NearestNeighbor:
     def classify(self, neighbors):
 
         neighbors = pd.DataFrame(neighbors)
-        Px = neighbors.iloc[:,0].value_counts().idxmax()
+        weights = pd.DataFrame(neighbors.groupby(by=[0])[1].sum())
+        Px = weights[weights[1] == weights[1].min()].index.values[0]
 
         return Px
 
@@ -335,7 +345,7 @@ class NearestNeighbor:
         return px
 
     def gaussianK(self, u):
-        x = (u**2) / self.bandwith
+        x = (u**2) / (2*self.bandwith**2)
         x = exp(-x)
         x = x / (2*np.pi)**(1/2)
         return x
@@ -348,27 +358,30 @@ class NearestNeighbor:
     @timeit
     def tuneit(self):
         if self.classification:
-            return self.tuneK()
+            return "K, performance: "+str(self.tuneK())
         else:
-            return self.tuneBandwidth(), self.tuneEpsilon()
+            return "K, Bandwith: "+str(self.tuneBandwidth()), "epsilon: "+str(self.eps)+" MSE: "+str(self.tuneEpsilon())
 
     # tuneEpsilon
     # -------------
     # used for regression
     # tunes epsilon to minimize MSE of the data set
     def tuneEpsilon(self):
-        if self.name == 'machine.data':
-            x = 10000
-        else:
-            x = 1000
-        perf = []
-        for i in np.random.randint(5, x, 25)/1000:
+        perf = {}
+        for i in tqdm(np.random.randint(1, 100, 25)/100):
             self.eps = i
-            print(i)
-            perf.append((i,self.EKNN(tune=True)))
-        low = min(perf, key=lambda x: x[1])
-        self.eps = low[0]
-        return low
+            #print(i)
+            perf[i] = self.EKNN(tune=True)
+        low = min(perf, key=perf.get)
+        self.eps = low
+        lists = sorted(perf.items())
+        x, y = zip(*lists)
+        plt.plot(x, y)
+        plt.xlabel("epsilon")
+        plt.ylabel("MSE")
+        plt.savefig("tuning/" + "epsilon."+self.name[:-4]+'png')
+        plt.clf()
+        return perf[low]
 
 
     # tuneBandwidth
@@ -379,6 +392,8 @@ class NearestNeighbor:
     def tuneBandwidth(self):
         if self.name == 'machine.data':
             x = 100
+        elif self.name == 'forestfires.data':
+            x = 20
         else:
             x = 1
         results = []
@@ -398,8 +413,9 @@ class NearestNeighbor:
         plt.xlabel('n_neighbors', fontsize=14)
         plt.ylabel('kernel_width', fontsize=14)
         plt.colorbar().set_label('Mean Absolute Error')
-        plt.savefig("GridSearch/" + self.name[:-4]+'png')
-        plt.show()
+        plt.savefig("tuning/" + "kandbandwith."+self.name[:-4]+'png')
+        plt.clf()
+        #plt.show()
 
         k,h = low[:-1]
 
@@ -429,12 +445,13 @@ class NearestNeighbor:
 
         lists = sorted(tune.items())
         x, y = zip(*lists)
-        #plt.plot(x, y)
-        #plt.xlabel("K neighbors")
-        #if self.classification: plt.ylabel("Prob")
-        #else: #plt.ylabel("MSE")
-       # plt.show()
-        return kk, tune
+        plt.plot(x, y)
+        plt.xlabel("K neighbors")
+        if self.classification: plt.ylabel("Prob")
+        else: #plt.ylabel("MSE")
+        plt.show()
+        plt.clf()
+        return kk, tune[kk]
 
 
 

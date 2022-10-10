@@ -7,6 +7,7 @@ for file in os.listdir("Data"):
     if file.endswith('.data'):
         print(file)
         test1 = nn.NearestNeighbor(file)
+        print(test1.KNN())
         print("Using:",test1.tuneit())
         results = 0
         for i in trange(10):
