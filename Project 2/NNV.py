@@ -391,15 +391,16 @@ class NearestNeighbor:
 
     def tuneBandwidth(self):
         if self.name == 'machine.data':
-            x = 100
+            x = 250
+            y = 100
         elif self.name == 'forestfires.data':
             x = 20
         else:
-            x = 1
+            y, x = 1
         results = []
 
-        for k in trange(1,10):
-            for h in np.random.randint(x, 10*x, 25):
+        for k in trange(1,round(self.train.shape[0]**(1/2)+5)):
+            for h in np.random.randint(y, 10*x, 25):
                 self.bandwith = h
                 MSE = self.KNN(tune=True)
                 results.append([k,h,MSE])
@@ -429,7 +430,7 @@ class NearestNeighbor:
     def tuneK(self):
         tune = {}
         self.train = pd.concat((self.samples))
-        for k in range(1,self.train.shape[0]**(1/2)+5):
+        for k in range(1,round(self.train.shape[0]**(1/2)+5)):
             self.k = k
             performance = self.KNN(tune=True)
             tune[k] = performance
