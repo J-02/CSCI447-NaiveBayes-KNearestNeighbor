@@ -7,10 +7,9 @@ import os
 import matplotlib.pylab as plt
 @nn.timeit
 def results():
-    runs = 10
-    for file in os.listdir("Data"):
-        if file.endswith('.data'):
-            test1 = nn.NearestNeighbor(file)
+    runs = 1
+    for file in tqdm(file for file in os.listdir("Data") if file.endswith('.data')):
+            test1 = nn.NearestNeighbor("forestfires.data")
             print("Tuning ", file)
             print("Using:", test1.tuneit())
 
@@ -43,7 +42,7 @@ def results():
             plt.title("K Nearest Neighbor")
             plt.xlabel("K neighbors")
             if test1.classification:
-                plt.ylabel("Prob")
+                plt.ylabel("Accuracy")
             else:
                 plt.ylabel("MSE")
             plt.savefig("results/KnnResults" + test1.name[:-4] + 'png')
@@ -68,10 +67,10 @@ def results():
             lists = sorted(EKNNResults.items())
             x, y = zip(*lists)
             plt.plot(x, y)
-            plt.title("K Nearest Neighbor")
+            plt.title("Edited K Nearest Neighbor")
             plt.xlabel("K neighbors")
             if test1.classification:
-                plt.ylabel("Prob")
+                plt.ylabel("Accuracy")
             else:
                 plt.ylabel("MSE")
             plt.savefig("results/EKnnResults" + test1.name[:-4] + 'png')
@@ -96,10 +95,10 @@ def results():
             lists = sorted(KMeansResults.items())
             x, y = zip(*lists)
             plt.plot(x, y)
-            plt.title("Edited Nearest Neighbor")
+            plt.title("K-Means")
             plt.xlabel("K neighbors")
             if test1.classification:
-                plt.ylabel("Prob")
+                plt.ylabel("Accuracy")
             else:
                 plt.ylabel("MSE")
             plt.savefig("results/KMeansResults" + test1.name[:-4] + 'png')
@@ -110,5 +109,7 @@ def results():
 
             fResults = pd.DataFrame(final)
             print(fResults.to_latex())
+
+
 
 results()

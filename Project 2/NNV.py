@@ -64,6 +64,8 @@ class NearestNeighbor:
     # Eknn
     # ----
     # edited nearest neighbor, removes incorrectly classified points from training data
+    # todo: if performance degrades after removing a point, readd it see if works better
+    # todo: doesn't get to check if all points are noise
     def EKNN(self, tune=False):
         if tune:
             test = self.tune
@@ -74,57 +76,72 @@ class NearestNeighbor:
         train = pd.DataFrame(self.train)  # initializes local training set to edit
         edited = pd.DataFrame(train) # initializes local edited training set to test performance for reduced data set
         len = self.train.shape[0]  # Creates variable to check if we have gone over every element in the training data
-        if self.classification: currentperf = 0  # determines what value performance starts at
-        if not self.classification: currentperf = np.infty  # lower is better for regression performance value MSE
+        if self.classification: bestPerf = 0  # determines what value performance starts at
+        if not self.classification: bestPerf = np.infty  # lower is better for regression performance value MSE
         count = 0  # initializes how many times we have edited
-        performance = []  # initializes list of performance values
         increment = (len // 10)  # how often to test performance
         prevSet = pd.DataFrame(train)  # initializes variable to store previous edited set
-        currentperf = self.performance(test,train)  # sets initial performance
-        correctPerf = 0
+        bestPerf = self.performance(test,train)  # sets initial performance
         # for regression data sets
         if not self.classification:
-            for x in tqdm(train.to_dict('index').keys()):  # iterating through each element in training data
-                if count == len: # if all training data has be gone through
-                    return currentperf
+            for x in (train.to_dict('index').keys()):  # iterating through each element in training data
+
                 count += 1  # adds to amount of elements gone through in training data
 
                 edited = self.edit(x, prevSet)
-                prevSize = prevSet.shape[0]
-                currentSize = edited.shape[0]
-                if count % increment == 0 :  # tests if a point has been edited out
-                    # tests if error increased
-                    correctPerf = self.performance(test, edited)
-                    if correctPerf > currentperf:
-                        self.clusters = prevSet.shape[0]
-                        # returns best performance
-                        return currentperf
+
+                if edited.shape[0] < prevSet.shape[0]:
+                    currentPerf = self.performance(test, edited)
+                    if currentPerf > bestPerf:
+                        edited = pd.concat([pd.DataFrame(train.loc[x, :]).transpose(), edited])
                     else:
+                        bestPerf = currentPerf
+                    prevSet = pd.DataFrame(edited)
+                #prevSize = prevSet.shape[0]
+                #currentSize = edited.shape[0]
+                #if count % increment == 0 :  # tests if a point has been edited out
+                    # tests if error increased
+                    #correctPerf = self.performance(test, edited)
+                    #if correctPerf > prevPerf:
+                        #self.clusters = prevSet.shape[0]
+                        # returns best performance
+                        #return prevPerf
+                    #else:
                     # updates performance if it improved and saves the edited training data
-                        currentperf = correctPerf
-                prevSet = pd.DataFrame(edited)
+                    # prevPerf = correctPerf
+                # prevSet = pd.DataFrame(edited)
 
 
         # for classification
         else:
 
-            for x in tqdm(train.to_dict('index').keys()):
+            for x in (train.to_dict('index').keys()):
                 count += 1
                 edited = self.edit(x, edited)  # returns data set with or without x depending if correct
-                if edited.shape[0] < prevSet.shape[0]:  # tests a point has been edited out
-                    correct = self.performance(test, edited)
-                    # tests if error increased
-                    if correct < currentperf:
-                        self.clusters = prevSet.shape[0]
-                        # returns best performance
-                        return currentperf
+
+                if edited.shape[0] < prevSet.shape[0]:
+                    currentPerf = self.performance(test, edited)
+                    if currentPerf < bestPerf:
+                        edited = pd.concat([pd.DataFrame(train.loc[x, :]).transpose(), edited])
                     else:
+                        bestPerf = currentPerf
+                    prevSet = pd.DataFrame(edited)
+
+                    
+                #if edited.shape[0] < prevSet.shape[0]:  # tests a point has been edited out
+                #    correct = self.performance(test, edited)
+                    # tests if error increased
+                #    if correct < prevPerf:
+                #        self.clusters = prevSet.shape[0]
+                        # returns best performance
+                #        return prevPerf
+                    #else:
                         # updates performance if it improved and saves the edited training data
-                        currentperf = correct
-                        prevSet = edited
-                        performance.append(correct)
+                        #prevPerf = correct
+                        #prevSet = edited
+                        #performance.append(correct)
         self.clusters = prevSet.shape[0]
-        return currentperf
+        return bestPerf
 
     # edit
     # ----
@@ -204,8 +221,9 @@ class NearestNeighbor:
             test = self.means
         else:  # uses 10th sample for test if being run normally
             test = self.samples[9]
-
-        train = self.train  # initializes local training data
+        self.train = pd.concat(self.samples[0:9])
+        self.train.drop('Dist', axis=1, inplace=True, errors='ignore')
+        train = pd.DataFrame(self.train)  # initializes local training data
 
         # initializes arrays of vectors
 
@@ -217,6 +235,8 @@ class NearestNeighbor:
         if not self.discrete:
             # iterates through each vector
             for i in testV:
+                if means:
+                    distance = np.sum((i[:-1] - trainV[:, :-1]) ** 2, axis=1) ** (1 / 2)
                 distance = np.sum((i[:-1] - trainV[:,:-1])**2,axis=1)**(1/2)  # calculates euclidean distance to each training point
                 train['Dist'] = distance  # appends distance to data frame
                 neighbors = train.nsmallest(self.k, 'Dist').iloc[:,-2:].values  # finds kth smallest distances
@@ -248,10 +268,13 @@ class NearestNeighbor:
 
 
     def Kmeans(self):
+        np.seterr(invalid='ignore')
         # initialize random centroids and variable to check if centroids changed
         self.EKNN()  # sets number of clusters
-        train = self.train  # initializes local training set
-        OGcentroids = train.sample(n=self.clusters,replace=False)  # takes k sample for random initial mean centroids
+        self.train = pd.concat(self.samples[0:9])
+        self.train.drop('Dist', axis=1, inplace=True, errors="ignore")
+        train = pd.DataFrame(self.train)  # initializes local training set
+        OGcentroids = pd.DataFrame(train.sample(n=self.clusters,replace=False))  # takes k sample for random initial mean centroids
         changed = True  # initiliazes boolean variable to indicate it centroids changed
         C = np.array(OGcentroids.to_numpy())
         means = np.zeros_like(C)# initializes array for centroid data to change
@@ -260,21 +283,33 @@ class NearestNeighbor:
         lastCcounts = []  # counts to each centroid
 
         # continue until centroids converge
-        pbar = tqdm()
+        #pbar = tqdm()
         n = 0
         while changed:
-            means = np.zeros_like(C)
+            means = np.zeros_like(old)
             centroids = pd.DataFrame(old,columns=Col)  # creates dataframe of each cluster
-            Ccounts = [0 for i in range(self.clusters)]  # creates empty list of counts for each cluster
+            Ccounts = [0 for i in range(centroids.shape[0])]  # creates empty list of counts for each cluster
+
             if self.discrete:  # decides distance function to use
                 trainD = train.to_dict('index')  # training data to dictionary for iteration
                 t, p = dist.initialize(centroids)   # initializes VDM arrays given centroids as training data
-                for x in tqdm(trainD.values()):  # goes through all data points
+                for x in (trainD.values()):  # goes through all data points
                     distances = dist.VDM(t, x, p, means=centroids)  # gets distance from each centroid to data point
                     c = np.argmin(distances[:,-1])  # returns closest centroid to data point
                     xi = np.array((list(x.values())))  # creates array from training point for np calculations
                     means[c] = means[c,:]+xi  # adds training point to centroid values
                     Ccounts[c] += 1  # adds count for centroid for average
+
+                zeros = []
+                for i in Ccounts:
+
+                    if i == 0:
+                        zeros.append(i)
+                Acounts = np.delete(Ccounts, zeros, 0)
+                Ameans = np.delete(means, zeros, 0)
+                AC = np.delete(C, zeros, 0)
+                C = AC
+
                 m = np.rint(means / np.array(Ccounts)[:,None])  # Calculates mean of centroid rounded to the nearest int
                 if np.array_equal(m,old):  # Checks if centroids changed
                     changed = False
@@ -295,7 +330,16 @@ class NearestNeighbor:
                     centroids.drop('Dist', axis=1, inplace=True)  # removes distance column from dataframe
                     means[c] = means[c, :] + i  # adds training point to centroid
                     Ccounts[c] += 1  # adds count for centroid
-                m = means / (np.array(Ccounts))[:, None] # calculates mean centroid not rounded
+                zeros = []
+                for i in Ccounts:
+
+                    if i == 0:
+                        zeros.append(i)
+                Acounts = np.delete(Ccounts,zeros,0)
+                Ameans = np.delete(means,zeros,0)
+                AC = np.delete(C,zeros,0)
+                C = AC
+                m = Ameans / Acounts[:, None] # calculates mean centroid not rounded
                 if np.array_equal(m,old):  # Checks if centroid changed
                     centroids = pd.DataFrame(old)
                     changed = False
@@ -308,7 +352,7 @@ class NearestNeighbor:
                     old = np.array(m)
                     lastCcounts = list(Ccounts)
             n += 1
-            pbar.update(n)
+            #pbar.update(n)
 
         # classify dependent variable of each centroid using KNN with training data
         if not self.discrete:
@@ -421,7 +465,7 @@ class NearestNeighbor:
         if test:
             it = np.arange(.1,.3,.1)
         else:
-            it = np.arange(.01,1,.05)
+            it = np.arange(.01,1,.1)
         if self.name == "abalone.data":
             it = np.arange(.01, .5, .01)
         perf = {}
@@ -448,14 +492,17 @@ class NearestNeighbor:
 
     def tuneBandwidth(self,test=False):
         if self.name == 'machine.data':
-            x = 50000
-            y = 100
+            x = 500000 # 5000
+            y = 10000  # 100
+            self.bandwith = 100
         elif self.name == 'forestfires.data':
-            x = 250
-            y = x
+            x = 10000 # 100
+            y = 10000 # 10
+            self.bandwith = 10
         else:
-            x = 10
-            y = 10
+            x = 10 # 0.1
+            y = 10 # 0.01
+            self.bandwith = 0.1
         results = []
         self.k = round(self.train.shape[0]**(1/2))
         sqrk = self.KNN(tune=True)
@@ -476,7 +523,7 @@ class NearestNeighbor:
             times = 2
         else:
             it = np.arange(1,max+5,2)
-            times = 25
+            times = 10
         for k in tqdm(it):
             self.k = k
             for h in np.random.randint(y, 10*x, times)/1000:
@@ -508,7 +555,7 @@ class NearestNeighbor:
         # sets the k for the data set, carries through all functions
     def tuneK(self):
         tune = {}
-        self.train = pd.concat((self.samples))
+        self.train = pd.concat(self.samples)
         for k in range(1,round(self.train.shape[0]**(1/2)+5)):
             self.k = k
             performance = self.KNN(tune=True)
