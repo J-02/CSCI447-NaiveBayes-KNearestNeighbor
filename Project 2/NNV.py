@@ -429,7 +429,7 @@ class NearestNeighbor:
     def tuneK(self):
         tune = {}
         self.train = pd.concat((self.samples))
-        for k in range(1,self.train**(1/2)+5):
+        for k in range(1,self.train.shape[0]**(1/2)+5):
             self.k = k
             performance = self.KNN(tune=True)
             tune[k] = performance
