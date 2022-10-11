@@ -69,17 +69,17 @@ class NearestNeighbor:
             test = self.tune
         else:
             test = self.samples[9]
-
+        self.train = pd.concat(self.samples[0:9])
         # initialization
-        train = self.train  # initializes local training set to edit
-        edited = train # initializes local edited training set to test performance for reduced data set
+        train = pd.DataFrame(self.train)  # initializes local training set to edit
+        edited = pd.DataFrame(train) # initializes local edited training set to test performance for reduced data set
         len = self.train.shape[0]  # Creates variable to check if we have gone over every element in the training data
         if self.classification: currentperf = 0  # determines what value performance starts at
         if not self.classification: currentperf = np.infty  # lower is better for regression performance value MSE
         count = 0  # initializes how many times we have edited
         performance = []  # initializes list of performance values
-        increment = (len // 100)  # how often to test performance
-        prevSet = edited  # initializes variable to store previous edited set
+        increment = (len // 10)  # how often to test performance
+        prevSet = pd.DataFrame(train)  # initializes variable to store previous edited set
         currentperf = self.performance(test,train)  # sets initial performance
         correctPerf = 0
         # for regression data sets
@@ -90,8 +90,9 @@ class NearestNeighbor:
                 count += 1  # adds to amount of elements gone through in training data
 
                 edited = self.edit(x, prevSet)
-
-                if edited.shape[0] < prevSet.shape[0]:  # tests a point has been edited out
+                prevSize = prevSet.shape[0]
+                currentSize = edited.shape[0]
+                if count % increment == 0 :  # tests if a point has been edited out
                     # tests if error increased
                     correctPerf = self.performance(test, edited)
                     if correctPerf > currentperf:
@@ -99,10 +100,10 @@ class NearestNeighbor:
                         # returns best performance
                         return currentperf
                     else:
-                        # updates performance if it improved and saves the edited training data
+                    # updates performance if it improved and saves the edited training data
                         currentperf = correctPerf
-                        prevSet = edited
-                        performance.append(correctPerf)
+                prevSet = pd.DataFrame(edited)
+
 
         # for classification
         else:
@@ -355,7 +356,7 @@ class NearestNeighbor:
             else:
                 return False
         else:
-            return abs(prediction-actual)
+            return abs(prediction-actual)**2
 
     # evaluate
     # --------
@@ -384,6 +385,9 @@ class NearestNeighbor:
 
         numer = sum([self.gaussianK(i[1])*i[0] for i in kN])
         denom = sum([self.gaussianK(i[1]) for i in kN])
+        #if denom == 0:
+        #   denom = 1
+
         px = (numer / denom)
         #print('Prediction:', px)
 
@@ -419,7 +423,7 @@ class NearestNeighbor:
         else:
             it = np.arange(.01,1,.05)
         if self.name == "abalone.data":
-            it = np.arange(.005, .2, .005)
+            it = np.arange(.01, .5, .01)
         perf = {}
         for i in it:
             self.eps = i
@@ -447,18 +451,18 @@ class NearestNeighbor:
             x = 50000
             y = 100
         elif self.name == 'forestfires.data':
-            x = 200
+            x = 250
             y = x
         else:
-            x = 100
-            y = 101
+            x = 10
+            y = 10
         results = []
         self.k = round(self.train.shape[0]**(1/2))
         sqrk = self.KNN(tune=True)
         self.k = 1
         k = self.KNN(tune=True)
         max = round(self.train.shape[0]**(1/2)+10)
-        step = max // 5
+        step = max // 10
         if self.classification:
             if k > sqrk:
                 max = 5
@@ -471,11 +475,11 @@ class NearestNeighbor:
             it = np.arange(1,3)
             times = 2
         else:
-            it = np.arange(1,max,step)
+            it = np.arange(1,max+5,2)
             times = 25
         for k in tqdm(it):
             self.k = k
-            for h in np.random.randint(y, 10*x, times)/100:
+            for h in np.random.randint(y, 10*x, times)/1000:
                 self.bandwith = h
                 MSE = self.KNN(tune=True)
                 results.append([k,h,MSE])

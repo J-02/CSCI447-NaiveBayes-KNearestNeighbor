@@ -77,7 +77,7 @@ def VDM(t, x, p=[], means=None):
     fsum= np.sum(fdiff, axis=0)
     distance = np.sum(fsum, axis=1)**(1/2)
 
-    if means is not None:
+    if means is None:
         return distance
     else:
         out = means.loc[t[0].index.values]

@@ -19,7 +19,7 @@ def results():
                 maxR = 6
 
             else:
-                minR = max(1, test1.k - 5)
+                minR = max(1, test1.k - 2)
                 maxR = minR + 5
 
             KNNResults = {}
@@ -30,6 +30,7 @@ def results():
                 for l in range(runs):
                     results += test1.KNN()
                     test1.samples.append(test1.samples.pop(0))
+                    test1.train = pd.concat(test1.samples[0:9])
 
                 results = results / runs
                 print("K = {} \nResult = ".format(test1.k), results)
@@ -57,6 +58,7 @@ def results():
                 for l in range(runs):
                     results += test1.EKNN()
                     test1.samples.append(test1.samples.pop(0))
+                    test1.train = pd.concat(test1.samples[0:9])
 
                 results = results / runs
                 print("K = {} \nResult = ".format(test1.k), results)
@@ -72,7 +74,7 @@ def results():
                 plt.ylabel("Prob")
             else:
                 plt.ylabel("MSE")
-            plt.savefig("results/KnnResults" + test1.name[:-4] + 'png')
+            plt.savefig("results/EKnnResults" + test1.name[:-4] + 'png')
             plt.clf()
             print(str(pd.DataFrame([EKNNResults]).to_latex()))
 
@@ -84,6 +86,7 @@ def results():
                 for l in range(runs):
                     results += test1.Kmeans()
                     test1.samples.append(test1.samples.pop(0))
+                    test1.train = pd.concat(test1.samples[0:9])
 
                 results = results / runs
                 print("K = {} \nResult = ".format(test1.k), results)
@@ -102,5 +105,10 @@ def results():
             plt.savefig("results/KMeansResults" + test1.name[:-4] + 'png')
             plt.clf()
             print(pd.DataFrame([EKNNResults]).to_latex())
+
+            final = [KNNResults,EKNNResults,KMeansResults]
+
+            fResults = pd.DataFrame(final)
+            print(fResults.to_latex())
 
 results()
