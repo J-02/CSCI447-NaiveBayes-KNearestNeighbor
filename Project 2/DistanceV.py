@@ -41,7 +41,7 @@ def initialize(data):
 # ------------------
 # calculates distance between two vectors given the conditional probabilities of each attribute value for each class
 # returns 1D array of distances the length of the training data
-def VDM(t, x, p=[], means=[]):
+def VDM(t, x, p=[], means=None):
     xClass = x['class']
     totaldist = 0
     xprob = 0
@@ -77,7 +77,7 @@ def VDM(t, x, p=[], means=[]):
     fsum= np.sum(fdiff, axis=0)
     distance = np.sum(fsum, axis=1)**(1/2)
 
-    if not means:
+    if means is not None:
         return distance
     else:
         out = means.loc[t[0].index.values]
