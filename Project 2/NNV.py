@@ -391,15 +391,17 @@ class NearestNeighbor:
 
     def tuneBandwidth(self):
         if self.name == 'machine.data':
-            x = 250
+            x = 500
             y = 100
         elif self.name == 'forestfires.data':
             x = 20
+            y = x
         else:
-            y, x = 1
+            x = 1
+            y = x
         results = []
 
-        for k in trange(1,round(self.train.shape[0]**(1/2)+5)):
+        for k in trange(1,round(self.train.shape[0]**(1/2)+10)):
             for h in np.random.randint(y, 10*x, 25):
                 self.bandwith = h
                 MSE = self.KNN(tune=True)
