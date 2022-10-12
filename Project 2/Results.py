@@ -1,11 +1,11 @@
+import os
+
+import matplotlib.pylab as plt
+import numpy as np
 import pandas as pd
 
 import NNV as nn
-from tqdm import trange, tqdm
-import numpy as np
-import os
-import matplotlib.pylab as plt
-from line_profiler_decorator import profiler
+
 
 @nn.timeit
 def results():
@@ -117,36 +117,57 @@ def video():
     test1 = nn.NearestNeighbor("forestfires.data")
     test2 = nn.NearestNeighbor("breast-cancer-wisconsin.data")
     test1.tuneit()
-    test2.tunit()
+    test2.tuneit()
+    train = pd.DataFrame(test1.train)
+    print("Samples")
+    for i in range(len(test1.samples)):
+        print("Sample: ",i+1)
+        print(test1.samples[i])
 
-    for i in test1.samples:
-        print(i)
-    x = test1.train.sample(n=1).to_numpy()
-    y = test1.train.sample(n=1).to_numpy()
+    x = train.sample(n=1).to_numpy()
+    actual = x[-1,-1]
+    x = x[:,:-1]
+    y = train.sample(n=1).to_numpy()[:,:-1]
     print(x)
     print(y)
 
     # distance function
-    distance = np.sum((x - y) ** 2, axis=1) ** (1 / 2)
+    s1 = (x - y) ** 2
+    print(s1)
+    s2 = np.sum(s1,axis=1)
+    print(s2)
+    s3 = s2 ** (1/2)
+    print(s3)
+
+    trainV = train.to_numpy()[:,:-1]
+
+    distance = np.sum((x - trainV) ** 2, axis=1) ** (1 / 2)
     print(distance)
 
-    # kernal function
-    print(test1.gaussianK(distance))
+    train['distance'] = distance
+    neighbors = np.sort(train.to_numpy()[:, -2:], axis=0)[:test1.k, :]
+    print(neighbors)
+    # kernel function
+    numer = sum([test1.gaussianK(i[1]) * i[0] for i in neighbors])
+    denom = sum([test1.gaussianK(i[1]) for i in neighbors])
+    prediction = (numer / denom)
+    print("Prediction: ",prediction,"Actual: ", actual)
 
-    # Nieghbors: classification and regression
-    test2 = nn.NearestNeighbor("breast-cancer-wisconsin.data")
+    # Neighbors: classification and regression
     test2.KNN(video=True)  # classification
     test1.KNN(video=True)  # regression
 
     # editing out points
-    x = test2.train.sample(n=20,replace=False)
-    for i in x.to_dict().keys():
+    x = test2.train.sample(n=10,replace=False)
+    for i in x.to_dict('index').keys():
         test2.edit(i, test2.train, video=True)
 
     # regression results
+    print(test1.name)
     cv(test1)
 
     # classification results
+    print(test2.name)
     cv(test2)
 
 def cv(test1):
@@ -185,5 +206,4 @@ def cv(test1):
 
 
 
-#video()
-results()
+video()
