@@ -480,17 +480,17 @@ class NearestNeighbor:
     #@profiler
     def tuneBandwidth(self,test=False):
         if self.name == 'machine.data':
-            x = 500000 # 5000
-            y = 10000  # 100
+            x = 50000 # 5000
+            y = 1000  # 100
             self.bandwith = 100
         elif self.name == 'forestfires.data':
-            x = 20000 # 100
-            y = 30000 # 30
-            self.bandwith = 10
+            x = 2000 # 100
+            y = 3000 # 30
+            self.bandwith = 30
         else:
-            x = 10 # 0.1
-            y = 10 # 0.01
-            self.bandwith = 0.1
+            x = 10000 # 1000
+            y = 9000 # 100
+            self.bandwith = 90
         results = []
         self.k = round(self.train.shape[0]**(1/2))
         sqrk = self.KNN(tune=True)
@@ -514,7 +514,7 @@ class NearestNeighbor:
             times = 25
         for k in tqdm(it):
             self.k = k
-            for h in np.random.randint(y, 10*x, times)/1000:
+            for h in np.random.randint(y, 10*x, times)/100:
                 self.bandwith = h
                 MSE = self.KNN(tune=True)
                 results.append([k,h,MSE])
