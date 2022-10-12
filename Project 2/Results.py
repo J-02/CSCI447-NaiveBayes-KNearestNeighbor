@@ -3,14 +3,15 @@ import os
 import matplotlib.pylab as plt
 import numpy as np
 import pandas as pd
-
+import tqdm
 import NNV as nn
 
 
 @nn.timeit
 def results():
-    runs = 1
-    for file in (file for file in os.listdir("Data") if file.endswith('.data')):
+    files = ["abalone.data", "machine.data","glass.data", "soybean-small.data","forestfires.data", "breast-cancer-wisconsin.data"]
+    runs = 10
+    for file in files:
             test1 = nn.NearestNeighbor(file)
             print("Tuning ", file)
             print("Using:", test1.tuneit())
@@ -18,14 +19,14 @@ def results():
             if test1.k == 1:
                 minR = 1
                 maxR = 6
-
+                maxR = test1.train.shape[0] + 5
             else:
                 minR = max(1, test1.k - 2)
                 maxR = minR + 5
 
             KNNResults = {}
             print("KNN 10 fold CV")
-            for i in (np.arange(minR, maxR)):
+            for i in (np.arange(minR, maxR, maxR // 5)):
                 test1.k = i
                 results = 0
                 for l in range(runs):
@@ -33,10 +34,10 @@ def results():
                     test1.samples.append(test1.samples.pop(0))
                     test1.train = pd.concat(test1.samples[0:9])
 
-                results = results / runs
-                print("K = {} \nResult = ".format(test1.k), results)
+                result = results / runs
+                print("K = {} \nResult = ".format(test1.k), result)
 
-                KNNResults[i] = results
+                KNNResults[i] = result
 
             lists = sorted(KNNResults.items())
             x, y = zip(*lists)
@@ -53,7 +54,7 @@ def results():
 
             EKNNResults = {}
             print("EKNN 10 fold CV")
-            for i in (np.arange(minR, maxR)):
+            for i in (np.arange(minR, maxR, maxR // 5)):
                 test1.k = i
                 results = 0
                 for l in range(runs):
@@ -61,10 +62,10 @@ def results():
                     test1.samples.append(test1.samples.pop(0))
                     test1.train = pd.concat(test1.samples[0:9])
 
-                results = results / runs
-                print("K = {} \nResult = ".format(test1.k), results)
+                result = results / runs
+                print("K = {} \nResult = ".format(test1.k), result)
 
-                EKNNResults[i] = results
+                EKNNResults[i] = result
 
             lists = sorted(EKNNResults.items())
             x, y = zip(*lists)
@@ -81,10 +82,10 @@ def results():
 
             KMeansResults = {}
             print("K-Means 10 fold CV")
-            for i in (np.arange(minR, maxR)):
+            for i in (np.arange(minR, maxR+5, maxR // 5)):
                 test1.k = i
                 results = 0
-                for l in range(runs):
+                for l in range(10):
                     results += test1.Kmeans()
                     test1.samples.append(test1.samples.pop(0))
                     test1.train = pd.concat(test1.samples[0:9])
@@ -92,7 +93,7 @@ def results():
                 result = results / runs
                 print("K = {} \nResult = ".format(test1.k), result)
 
-                KMeansResults[i] = results
+                KMeansResults[i] = result
 
             lists = sorted(KMeansResults.items())
             x, y = zip(*lists)
@@ -105,7 +106,7 @@ def results():
                 plt.ylabel("MSE")
             plt.savefig("results/KMeansResults" + test1.name[:-4] + 'png')
             plt.clf()
-            print(pd.DataFrame([EKNNResults]).to_latex())
+            print(pd.DataFrame([KMeansResults]).to_latex())
 
             final = [KNNResults,EKNNResults,KMeansResults]
 
@@ -195,6 +196,8 @@ def cv(test1):
     result = results / runs
     print(test1.result, ":", result)
 
+    results = 0
+
     print("K-Means 10 fold CV")
     for l in range(runs):
         results += test1.Kmeans()
@@ -205,5 +208,5 @@ def cv(test1):
     print(test1.result, ":", result)
 
 
+results()
 
-video()

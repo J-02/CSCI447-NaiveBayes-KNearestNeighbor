@@ -85,13 +85,8 @@ class NearestNeighbor:
         increased = True
         samples = edited.iloc[0:0]
         # pbar = tqdm()
-        while increased:
-            X = edited.sample(n=1)
-            x = X.index.values[0]   # iterating through each element in training data
-            if x in samples.index.values:
-                if samples.shape[0] == len:
-                    break
-                continue
+
+        for x in (train.to_dict("index").keys()):
             count += 1  # adds to amount of elements gone through in training data
             # pbar.update(count)
             edited = self.edit(x, edited)  # editing returns dataframe with or without x if correct/incorrect
@@ -102,14 +97,10 @@ class NearestNeighbor:
                 if (self.classification and currentPerf < bestPerf) or (not self.classification and currentPerf > bestPerf):
                     increased = False
                     break
-                elif count == len:
-                    increased = False
-                    break
-
                 else:
                     bestPerf = currentPerf
                     bestSet = pd.DataFrame(edited)
-            samples = pd.concat([samples,X])
+
 
         if self.clusters:
             if bestSet.shape[0] < self.clusters:
@@ -140,7 +131,7 @@ class NearestNeighbor:
             distance = np.sum((i - trainV) ** 2, axis=1) ** (1 / 2)  # calculates distance to all training elements from test element
 
         train['Dist'] = distance  # adds distance of each element to new data frame column, to determine classes
-        neighbors = np.sort(train.to_numpy()[:,-2:], axis=0)[:self.k,:]  # finds the k-nearest neighbors
+        neighbors = np.sort(train.to_numpy()[:,-2:], axis=0)[:int(self.k),:]  # finds the k-nearest neighbors
         train.drop('Dist', axis=1, inplace=True, errors='ignore')  # removes distance column
         px = self.predict(neighbors)
         # for regression data sets
@@ -179,7 +170,7 @@ class NearestNeighbor:
             for x in testD.values():
                 distance = dist.VDM(t, x, p)
                 train['Dist'] = distance
-                neighbors = np.sort(train.to_numpy()[:,-2:], axis=0)[:self.k,:]
+                neighbors = np.sort(train.to_numpy()[:,-2:], axis=0)[:int(self.k),:]
                 # train.drop('Dist', axis=1, inplace=True)
                 px = self.predict(neighbors)
                 tPerf.append(self.correct(px, list(x.values())[-1]))  # returns squared error / amount correct
@@ -188,7 +179,7 @@ class NearestNeighbor:
             for x in testV:
                 distance = np.sum((x[:-1] - trainV[:,:-1])**2, axis=1) ** (1 / 2)  # calculates distance to all training elements from test element
                 train['Dist'] = distance
-                neighbors = np.sort(train.to_numpy()[:, -2:], axis=0)[:self.k, :]
+                neighbors = np.sort(train.to_numpy()[:, -2:], axis=0)[:int(self.k), :]
                 # neighbors = train.nsmallest(self.k, 'Dist').iloc[:, -2:].values
                 px = self.predict(neighbors)
                 tPerf.append(self.correct(px, x[-1]))  # returns squared error / amount correct
@@ -224,11 +215,11 @@ class NearestNeighbor:
                 distance = np.sum((i[:-1] - trainV[:,:-1])**2,axis=1)**(1/2)  # calculates euclidean distance to each training point
                 train['Dist'] = distance  # appends distance to data frame
 
-                neighbors = np.sort(train.to_numpy()[:, -2:], axis=0)[:self.k, :] # finds kth smallest distances
+                neighbors = np.sort(train.to_numpy()[:, -2:], axis=0)[:int(self.k), :] # finds kth smallest distances
                 px = self.predict(neighbors)  # predicts value for i
 
                 if video:
-                    neighbors = np.sort(train.to_numpy()[:, -2:], axis=0)[:self.k, :]
+                    neighbors = np.sort(train.to_numpy()[:, -2:], axis=0)[:int(self.k), :]
                     print(neighbors)
                     print(px)
                     return
@@ -241,11 +232,11 @@ class NearestNeighbor:
             for x in testD.values():  # goes through each value
                 distance = dist.VDM(t, x, p)  # gets distance to each training point
                 train['Dist'] = distance  # adds distance to df
-                neighbors = np.sort(train.to_numpy()[:, -2:], axis=0)[:self.k, :]  # finds kth smallest distances
+                neighbors = np.sort(train.to_numpy()[:, -2:], axis=0)[:int(self.k), :]  # finds kth smallest distances
                 px = self.predict(neighbors) # predicts value for x
                 actual = x['class']
                 if video:
-                    neighbors = np.sort(train.to_numpy(), axis=0)[:self.k, :]
+                    neighbors = np.sort(train.to_numpy(), axis=0)[:int(self.k), :]
                     print(neighbors)
                     print(px)
                     return
@@ -304,19 +295,16 @@ class NearestNeighbor:
                 means = means[means['count']  > 0].divide(means[means['count']  > 0]['count'],axis=0).round(decimals=0)
 
                 m = np.array(means.to_numpy()[:,:-1])
-                if old.shape == m.shape:
-                    difference = abs(old - m)
-                    convergence += 1# Calculates mean of centroid rounded to the nearest int
-                else:
-                    difference = prevDiff-1
-                if np.array_equal(m,old) or np.array_equal(difference,prevDiff) or convergence == train.shape[0]:  # Checks if centroids changed
-
+                #if old.shape == m.shape:
+                #    difference = abs(old - m)
+                #    convergence += 1# Calculates mean of centroid rounded to the nearest int
+                #else:
+                #    difference = prevDiff-1
+                if np.array_equal(m,old):  # Checks if centroids changed
                     changed = False
                     break
                 else:
-                    prevDiff = difference
                     old = np.array(m)  # updates centroids
-                    lastCcounts = list(Ccounts)
 
 
             else:
@@ -358,7 +346,7 @@ class NearestNeighbor:
             for i in testV:  # goes through each cluster
                 distance = np.sum((i[:-1] - trainV[:,:-1])**2,axis=1)**(1/2)  # gets distance from cluster to each training point
                 train['Dist'] = distance  # sets distances
-                neighbors = np.sort(train.to_numpy()[:, -2:], axis=0)[:self.k, :]  # finds neighbors
+                neighbors = np.sort(train.to_numpy()[:, -2:], axis=0)[:int(self.k), :]  # finds neighbors
                 px = self.predict(neighbors)  # gets prediction for cluster
                 centroids.iloc[index,-1] = px  # assigns prediction to cluster dependent variable
                 index += 1
@@ -370,7 +358,7 @@ class NearestNeighbor:
             for x in testD.values():
                 distance = dist.VDM(t, x, p)  # gets VDM distance
                 train['Dist'] = distance
-                neighbors = np.sort(train.to_numpy()[:, -2:], axis=0)[:self.k, :]
+                neighbors = np.sort(train.to_numpy()[:, -2:], axis=0)[:int(self.k), :]
                 px = self.predict(neighbors)
                 centroids.iloc[index, :]['class'] = px # updates class for x to predicted
                 index += 1
@@ -424,13 +412,7 @@ class NearestNeighbor:
 
         numer = sum([self.gaussianK(i[1])*i[0] for i in kN])
         denom = sum([self.gaussianK(i[1]) for i in kN])
-        #if denom == 0:
-        #   denom = 1
-        if denom == 0:
-            what = 0
         px = (numer / denom)
-        #print('Prediction:', px)
-
         return px
 
     def gaussianK(self, u):
@@ -448,6 +430,22 @@ class NearestNeighbor:
     # if regression then performs grid search of bandwidth and k and then epsilon
     @timeit
     def tuneit(self,test=False):
+        #if self.name == 'abalone.data':
+        #    self.k = 67
+        #    self.bandwith = 10
+        #    self.eps = 0.01
+        #    return "K, Bandwith: ",self.k,self.bandwith," epsilon: " + str(self.eps)
+        #elif self.name == 'machine.data':
+        #    self.k = 27
+        #    self.bandwith = 4852.95
+        #    self.eps = 0.01
+        #    return "K, Bandwith: ",self.k,self.bandwith," epsilon: " + str(self.eps)
+        #elif self.name == 'forestfires.data':
+            #self.k = 1
+            #self.bandwith = 55.72
+            #self.eps = 0.01
+            #return "K, Bandwith: ",self.k,self.bandwith," epsilon: " + str(self.eps)
+        self.k = 1
         if self.classification:
             return "K, performance: "+str(self.tuneK())
         else:
@@ -491,19 +489,19 @@ class NearestNeighbor:
     #@profiler
     def tuneBandwidth(self,test=False):
         if self.name == 'machine.data':
-            x = 100 # 5000
-            y = 1  # 100
+            x = 50000 # 5000
+            y = 10000  # 100
             self.bandwith = 1
         elif self.name == 'forestfires.data':
-            x = 100 # 100
-            y = 1 # 30
+            x = 1000 # 100
+            y = 3000 # 30
             self.bandwith = 1
         else:
-            x = 200 # 10
-            y = 500 # 1
+            x = 100 # 10
+            y = 100 # 1
             self.bandwith = 1
         results = []
-        self.k = round(self.train.shape[0]**(1/2))
+        self.k = int(round(self.train.shape[0]**(1/2)))
         sqrk = self.KNN(tune=True)
         self.k = 1
         k = self.KNN(tune=True)
@@ -521,10 +519,10 @@ class NearestNeighbor:
             it = np.arange(1,3)
             times = 2
         else:
-            it = np.arange(1,max+5,step)
+            it = np.arange(1,round(self.train.shape[0]**(1/2)+10,round(self.train.shape[0]**(1/2)//10)))
             times = 25
         for k in tqdm(it):
-            self.k = k
+            self.k = int(k)
             for h in np.random.randint(y, 10*x, times)/100:
                 self.bandwith = h
                 MSE = self.KNN(tune=True)
@@ -555,17 +553,13 @@ class NearestNeighbor:
     def tuneK(self):
         tune = {}
         self.train = pd.concat(self.samples)
-        for k in trange(1,round(self.train.shape[0]**(1/2)+5)):
+        for k in trange(int(round(self.train.shape[0]**(1/2))-10,round(self.train.shape[0]**(1/2)+10))):
             self.k = k
             performance = self.KNN(tune=True)
             tune[k] = performance
             k += 1
 
-        if self.classification:
-           kk = max(tune, key=tune.get)
-
-        else:
-            kk = min(tune, key=tune.get)
+        kk = max(tune, key=tune.get)
 
         self.k = kk
 

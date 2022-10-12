@@ -27,13 +27,13 @@ def timeit(my_func):
 def initialize(data):
 
     p = [data.groupby('class')[feature].value_counts() / data.groupby('class')[feature].count() for feature in data.columns][:-1]
-      # makes dataframe of all class conditional probabilites, index is feature values
+      # list makes dataframe of all class conditional probabilites, index is feature values
 
     t = []
     for z in data['class'].unique():
         temp = data
         for x in range(len(temp.columns[temp.columns != 'class'])):
-            temp = temp.replace({temp.columns[temp.columns != 'class'][x]: p[x][z].to_dict()})
+            temp = temp.replace({temp.columns[temp.columns != 'class'][x]: p[x][z].to_dict()}) # puts all training data to probabilities
         t.append(temp)
     return t, p
 
