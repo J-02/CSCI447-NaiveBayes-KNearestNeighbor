@@ -6,10 +6,10 @@ import numpy as np
 import os
 import matplotlib.pylab as plt
 from line_profiler_decorator import profiler
-@profiler()
+
 @nn.timeit
 def results():
-    runs = 10
+    runs = 1
     for file in (file for file in os.listdir("Data") if file.endswith('.data')):
             test1 = nn.NearestNeighbor(file)
             print("Tuning ", file)
@@ -133,10 +133,12 @@ def video():
     # kernal function
     print(test1.gaussianK(distance))
 
+    # Nieghbors: classification and regression
     test2 = nn.NearestNeighbor("breast-cancer-wisconsin.data")
-    test2.KNN(video=True)
-    test1.KNN(video=True)
+    test2.KNN(video=True)  # classification
+    test1.KNN(video=True)  # regression
 
+    # editing out points
     x = test2.train.sample(n=20,replace=False)
     for i in x.to_dict().keys():
         test2.edit(i, test2.train, video=True)

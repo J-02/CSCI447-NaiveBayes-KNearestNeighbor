@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import time
 import warnings
+from line_profiler_decorator import profiler
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
@@ -22,56 +23,42 @@ def timeit(my_func):
 # input is the training data
 # computes the conditional probability for each attribute value of the training data for each class
 # returns two lists: one with a dataframe for each class and one with training data probabilities for each class
+#@profiler
 def initialize(data):
 
-    p = [data.groupby('class')[feature].value_counts() / data.groupby('class')[feature].count() for feature in data.columns]
-    l = pd.DataFrame(p).transpose()  # makes dataframe of all class conditional probabilites, index is feature values
-    # and column is the feature
-    ps = [l.loc[x,:].fillna(0) for x in data['class'].unique()]
-    t = []
-    for z in range(len(data['class'].unique())):
-        temp = data
-        for x in temp.columns[temp.columns != 'class']:
-            temp = temp.replace({x: ps[z][x].to_dict()})
-        t.append(temp)
-    return t, ps
+    p = [data.groupby('class')[feature].value_counts() / data.groupby('class')[feature].count() for feature in data.columns][:-1]
+      # makes dataframe of all class conditional probabilites, index is feature values
 
+    t = []
+    for z in data['class'].unique():
+        temp = data
+        for x in range(len(temp.columns[temp.columns != 'class'])):
+            temp = temp.replace({temp.columns[temp.columns != 'class'][x]: p[x][z].to_dict()})
+        t.append(temp)
+    return t, p
+
+# checks if conditional prob exists returns 0 if not
+def lookupCatch(p,i,c,v):
+    try:
+       return p[i][c][v]
+    except:
+        return 0
 
 # VDM
 # ------------------
 # calculates distance between two vectors given the conditional probabilities of each attribute value for each class
 # returns 1D array of distances the length of the training data
-def VDM(t, x, p=[], means=None):
-    xClass = x['class']
+def VDM(t, X, p=[], means=None):
+    x = X.copy()
+    xClass = x.pop('class')
     totaldist = 0
     xprob = 0
     yprob = 0
     pa = np.array([t[i].to_numpy()[:,:-1] for i in range(len(t))]) # puts probabilities of datset in array
     totaldist = np.empty_like(pa)
     l = []
-
-    try:
-        xp = np.array([np.tile(p[i].lookup(list(x.values()), list(x))[:-1], (pa[0].shape[0], 1)) for i in range(len(t[0]['class'].unique()))])
-    except:
-
-        for i in range(len(t[0]['class'].unique())):
-
-            try:
-
-                l1 = np.tile(p[i].lookup(list(x.values()), list(x))[:-1], (pa[0].shape[0], 1))
-                l.append(l1)
-
-            except:
-                l1 = []
-                for k,v in x.items():
-                    if k == "class":
-                        continue
-                    try:
-                        l1.append(p[i].iloc[v,k])
-                    except:
-                        l1.append(0)
-                l.append(np.tile(l1, (pa[0].shape[0], 1)))
-        xp = np.array(l)
+    xlist = list(x.values())
+    xp = np.array([np.tile([lookupCatch(p,i,c,xlist[i]) for i in range(len(xlist))],(pa[0].shape[0], 1)) for c in t[0]['class'].unique()])
 
     fdiff = np.subtract(xp,pa)**2
     fsum= np.sum(fdiff, axis=0)
