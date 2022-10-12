@@ -1,0 +1,19 @@
+Karthik:
+    initial knn algorithm
+    created paper outline
+Jonathan:
+    Created method to take stratified samples
+    Made Edited nearest neighbor method
+    Made KNN that worked with the stratified samples
+    Made K-means clusters
+    Created kernel functions and classification and regression methods
+    Created methods to tune all hyper-parameters
+    Optimized and tuned the runtime of all functions
+
+    Put results in paper
+    Updated outline to better fit our experiments
+    Provided result analysis and summary
+    made sure each algorithm properly described
+
+    Since wrote most of code created script for video
+    Since need to alternate person to record video also recorded the video and edited it

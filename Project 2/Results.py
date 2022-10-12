@@ -6,10 +6,11 @@ import pandas as pd
 import tqdm
 import NNV as nn
 
-
+# this is where all the cross validation occurred for each data set
+# basically to print the information from each data file
 @nn.timeit
 def results():
-    files = ["abalone.data", "machine.data","glass.data", "soybean-small.data","forestfires.data", "breast-cancer-wisconsin.data"]
+    files = ["glass.data", "soybean-small.data", "breast-cancer-wisconsin.data"]
     runs = 10
     for file in files:
             test1 = nn.NearestNeighbor(file)
@@ -23,10 +24,12 @@ def results():
             else:
                 minR = max(1, test1.k - 2)
                 maxR = minR + 5
-
+            l = [1]
+            k = list(np.arange(round(maxR-(maxR*.5)),round(maxR+(maxR*.5)), round(maxR*0.2)))
+            k = [1,25,50,100,125]
             KNNResults = {}
             print("KNN 10 fold CV")
-            for i in (np.arange(minR, maxR, maxR // 5)):
+            for i in k:
                 test1.k = i
                 results = 0
                 for l in range(runs):
@@ -54,7 +57,7 @@ def results():
 
             EKNNResults = {}
             print("EKNN 10 fold CV")
-            for i in (np.arange(minR, maxR, maxR // 5)):
+            for i in k:
                 test1.k = i
                 results = 0
                 for l in range(runs):
@@ -82,7 +85,7 @@ def results():
 
             KMeansResults = {}
             print("K-Means 10 fold CV")
-            for i in (np.arange(minR, maxR+5, maxR // 5)):
+            for i in k:
                 test1.k = i
                 results = 0
                 for l in range(10):
@@ -115,7 +118,7 @@ def results():
 
 def video():
     # data being split
-    test1 = nn.NearestNeighbor("forestfires.data")
+    test1 = nn.NearestNeighbor("abalone.data")
     test2 = nn.NearestNeighbor("breast-cancer-wisconsin.data")
     test1.tuneit()
     test2.tuneit()
@@ -207,6 +210,5 @@ def cv(test1):
     result = results / runs
     print(test1.result, ":", result)
 
-
-results()
+video()
 
