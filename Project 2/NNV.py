@@ -47,6 +47,7 @@ class NearestNeighbor:
         else:
             self.classification = False  # regression
             self.result = "MSE"
+        self.clusters = None
 
     # predict
     # -------
@@ -83,7 +84,7 @@ class NearestNeighbor:
         bestPerf = self.performance(test,train)  # sets initial performance
         increased = True
         samples = edited.iloc[0:0]
-        pbar = tqdm()
+        # pbar = tqdm()
         while increased:
             X = edited.sample(n=1)
             x = X.index.values[0]   # iterating through each element in training data
@@ -92,7 +93,7 @@ class NearestNeighbor:
                     break
                 continue
             count += 1  # adds to amount of elements gone through in training data
-            pbar.update(count)
+            # pbar.update(count)
             edited = self.edit(x, edited)  # editing returns dataframe with or without x if correct/incorrect
             if edited.shape[0] == self.k:
                 break
@@ -110,7 +111,11 @@ class NearestNeighbor:
                     bestSet = pd.DataFrame(edited)
             samples = pd.concat([samples,X])
 
-        self.clusters = bestSet.shape[0]
+        if self.clusters:
+            if bestSet.shape[0] < self.clusters:
+                self.clusters = bestSet.shape[0]
+        else:
+            self.clusters = bestSet.shape[0]
         return bestPerf
 
     # edit
@@ -262,7 +267,7 @@ class NearestNeighbor:
     def Kmeans(self):
         np.seterr(invalid='ignore')
         # initialize random centroids and variable to check if centroids changed
-        self.EKNN()  # sets number of clusters
+        #self.EKNN()  # sets number of clusters
         self.train = pd.concat(self.samples[0:9])
         self.train.drop('Dist', axis=1, inplace=True, errors="ignore")
         train = pd.DataFrame(self.train)  # initializes local training set
@@ -274,9 +279,12 @@ class NearestNeighbor:
         Col= OGcentroids.columns.values  # stores the headings
         lastCcounts = []  # counts to each centroid
         centroids = pd.DataFrame(old, columns=Col)
+        difference = 0
+        prevDiff = 1
         # continue until centroids converge
-        pbar = tqdm()
-        n = 0
+        # pbar = tqdm()
+        # n = 0
+        convergence = 0
         while changed:
             means = np.zeros_like(old)
             centroids = pd.DataFrame(old,columns=Col)  # creates dataframe of each cluster
@@ -291,36 +299,25 @@ class NearestNeighbor:
                     xi = np.array((list(x.values())))  # creates array from training point for np calculations
                     means[c] = means[c,:]+xi  # adds training point to centroid values
                     Ccounts[c] += 1  # adds count for centroid for average
+                means = pd.DataFrame(means)
+                means['count'] = Ccounts
+                means = means[means['count']  > 0].divide(means[means['count']  > 0]['count'],axis=0).round(decimals=0)
 
-                zeros = []
-                for i in Ccounts:
+                m = np.array(means.to_numpy()[:,:-1])
+                if old.shape == m.shape:
+                    difference = abs(old - m)
+                    convergence += 1# Calculates mean of centroid rounded to the nearest int
+                else:
+                    difference = prevDiff-1
+                if np.array_equal(m,old) or np.array_equal(difference,prevDiff) or convergence == train.shape[0]:  # Checks if centroids changed
 
-                    if i == 0:
-                        zeros.append(i)
-                Acounts = np.delete(Ccounts, zeros, 0)
-                Ameans = np.delete(means, zeros, 0)
-                AC = np.delete(C, zeros, 0)
-                C = AC
-                m = np.rint(Ameans / Acounts[:, None]) # Calculates mean of centroid rounded to the nearest int
-                if np.array_equal(m,old):  # Checks if centroids changed
                     changed = False
                     break
                 else:
+                    prevDiff = difference
                     old = np.array(m)  # updates centroids
                     lastCcounts = list(Ccounts)
 
-                t, p = dist.initialize(train)
-                centroids = pd.DataFrame(old, columns=Col)
-                testD = centroids.to_dict('index')
-                index = 0
-                for x in testD.values():
-                    distance = dist.VDM(t, x, p)  # gets VDM distance
-                    train['Dist'] = distance
-                    neighbors = np.sort(train.to_numpy()[:, -2:], axis=0)[:self.k, :]
-                    px = self.predict(neighbors)
-                    centroids.iloc[index, :]['class'] = px  # updates class for x to predicted
-                    index += 1
-                    train.drop('Dist', axis=1, inplace=True, errors="ignore")
 
             else:
                 trainV = np.array(train.to_numpy())  # puts training data to numpy
@@ -351,8 +348,8 @@ class NearestNeighbor:
                 else:
                     old = np.array(m)
                     lastCcounts = list(Ccounts)
-            n += 1
-            pbar.update(n)
+           # n += 1
+           #pbar.update(n)
 
         # classify dependent variable of each centroid using KNN with training data
         if not self.discrete:
