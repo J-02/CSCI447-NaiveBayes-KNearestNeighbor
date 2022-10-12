@@ -5,11 +5,13 @@ from tqdm import trange, tqdm
 import numpy as np
 import os
 import matplotlib.pylab as plt
+from line_profiler_decorator import profiler
+@profiler()
 @nn.timeit
 def results():
-    runs = 1
-    for file in tqdm(file for file in os.listdir("Data") if file.endswith('.data')):
-            test1 = nn.NearestNeighbor("forestfires.data")
+    runs = 10
+    for file in (file for file in os.listdir("Data") if file.endswith('.data')):
+            test1 = nn.NearestNeighbor(file)
             print("Tuning ", file)
             print("Using:", test1.tuneit())
 
@@ -87,8 +89,8 @@ def results():
                     test1.samples.append(test1.samples.pop(0))
                     test1.train = pd.concat(test1.samples[0:9])
 
-                results = results / runs
-                print("K = {} \nResult = ".format(test1.k), results)
+                result = results / runs
+                print("K = {} \nResult = ".format(test1.k), result)
 
                 KMeansResults[i] = results
 
@@ -110,6 +112,76 @@ def results():
             fResults = pd.DataFrame(final)
             print(fResults.to_latex())
 
+def video():
+    # data being split
+    test1 = nn.NearestNeighbor("forestfires.data")
+    test2 = nn.NearestNeighbor("breast-cancer-wisconsin.data")
+    test1.tuneit()
+    test2.tunit()
+
+    for i in test1.samples:
+        print(i)
+    x = test1.train.sample(n=1).to_numpy()
+    y = test1.train.sample(n=1).to_numpy()
+    print(x)
+    print(y)
+
+    # distance function
+    distance = np.sum((x - y) ** 2, axis=1) ** (1 / 2)
+    print(distance)
+
+    # kernal function
+    print(test1.gaussianK(distance))
+
+    test2 = nn.NearestNeighbor("breast-cancer-wisconsin.data")
+    test2.KNN(video=True)
+    test1.KNN(video=True)
+
+    x = test2.train.sample(n=20,replace=False)
+    for i in x.to_dict().keys():
+        test2.edit(i, test2.train, video=True)
+
+    # regression results
+    cv(test1)
+
+    # classification results
+    cv(test2)
+
+def cv(test1):
+    runs = 10
+    print("KNN 10 fold CV")
+    results = 0
+    for l in range(runs):
+        results += test1.KNN()
+        test1.samples.append(test1.samples.pop(0))
+        test1.train = pd.concat(test1.samples[0:9])
+
+    result = results / runs
+    print(test1.result,":",result)
+
+    results = 0
 
 
+    print("EKNN 10 fold CV")
+
+    for l in range(runs):
+        results += test1.EKNN()
+        test1.samples.append(test1.samples.pop(0))
+        test1.train = pd.concat(test1.samples[0:9])
+
+    result = results / runs
+    print(test1.result, ":", result)
+
+    print("K-Means 10 fold CV")
+    for l in range(runs):
+        results += test1.Kmeans()
+        test1.samples.append(test1.samples.pop(0))
+        test1.train = pd.concat(test1.samples[0:9])
+
+    result = results / runs
+    print(test1.result, ":", result)
+
+
+
+#video()
 results()
