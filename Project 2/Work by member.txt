@@ -1,6 +1,9 @@
 Karthik:
     initial knn algorithm
     created paper outline
+        completed abstract
+        problem statement
+        and 2.4 Regression and Classification
 Jonathan:
     Created method to take stratified samples
     Made Edited nearest neighbor method
